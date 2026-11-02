@@ -166,20 +166,20 @@ export default function App() {
   });
 
   return (
-    <div className="min-h-screen bg-[#102B20] text-[#F5F1E6] font-sans pb-20">
+    <div className="min-h-screen bg-[#F5F1E6] text-[#173D2E] font-sans pb-20">
       {/* NAVBAR */}
-      <nav className="sticky top-0 z-40 bg-[#173D2E]/95 backdrop-blur-md border-b border-[#BF9F62]/25 px-4 lg:px-8 py-4 shadow-lg">
+      <nav className="sticky top-0 z-40 bg-[#F5F1E6]/90 backdrop-blur-md border-b border-[#173D2E]/15 px-4 lg:px-8 py-4 shadow-sm">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           {/* Logo Section */}
           <div
             className="flex items-center gap-3 cursor-pointer"
             onClick={() => setSelectedCategory('All')}
           >
-            <div className="w-10 h-10 rounded-xl bg-[#BF9F62]/15 border border-[#BF9F62]/40 flex items-center justify-center shadow-md">
+            <div className="w-10 h-10 rounded-xl bg-[#173D2E] flex items-center justify-center shadow-md">
               <span className="font-extrabold text-[#BF9F62] tracking-tight text-lg">BR</span>
             </div>
             <div className="flex flex-col">
-              <span className="text-xl font-black text-[#F5F1E6] tracking-wider">
+              <span className="text-xl font-black text-[#173D2E] tracking-wider">
                 BAZAAR RETAIL
               </span>
             </div>
@@ -187,20 +187,20 @@ export default function App() {
 
           {/* Search Bar */}
           <div className="flex-1 max-w-md hidden md:block relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#BF9F62]/70" />
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#173D2E]/60" />
             <input
               type="text"
               placeholder="Search products in Bazaar Retail..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-[#102B20] border border-[#BF9F62]/30 rounded-xl pl-9 pr-4 py-2 text-sm text-[#F5F1E6] placeholder-[#F5F1E6]/40 focus:outline-none focus:border-[#BF9F62] transition-all"
+              className="w-full bg-[#EFEAE0] border border-[#173D2E]/20 rounded-xl pl-9 pr-4 py-2 text-sm text-[#173D2E] placeholder-[#173D2E]/50 focus:outline-none focus:border-[#BF9F62] transition-all"
             />
           </div>
 
           {/* Cart Button */}
           <button
             onClick={() => setIsCartOpen(true)}
-            className="relative p-2.5 rounded-xl bg-[#102B20] border border-[#BF9F62]/35 hover:bg-[#1f4e3b] text-[#BF9F62] transition-all"
+            className="relative p-2.5 rounded-xl bg-[#EFEAE0] border border-[#173D2E]/20 hover:bg-[#E5DEC3] text-[#173D2E] transition-all"
           >
             <ShoppingCart className="w-5 h-5" />
             {cart.length > 0 && (
@@ -213,15 +213,15 @@ export default function App() {
       </nav>
 
       {/* HERO BANNER */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-[#BF9F62]/10 via-[#173D2E]/60 to-transparent py-14 px-4 border-b border-[#BF9F62]/20">
+      <section className="relative overflow-hidden bg-gradient-to-b from-[#BF9F62]/20 via-[#EFEAE0]/50 to-transparent py-14 px-4 border-b border-[#173D2E]/10">
         <div className="max-w-4xl mx-auto text-center space-y-4">
-          <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#BF9F62]/15 border border-[#BF9F62]/35 text-[#BF9F62] text-xs font-semibold uppercase tracking-widest">
-            <Sparkles className="w-3.5 h-3.5" /> Premium Shopping Experience
+          <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#173D2E]/10 border border-[#173D2E]/20 text-[#173D2E] text-xs font-bold uppercase tracking-widest">
+            <Sparkles className="w-3.5 h-3.5 text-[#BF9F62]" /> Premium Shopping Experience
           </span>
-          <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-[#F5F1E6]">
-            Quality Products Delivered by <span className="text-[#BF9F62]">Bazaar Retail</span>
+          <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-[#173D2E]">
+            Quality Products Delivered by <span className="text-[#9E7E38]">Bazaar Retail</span>
           </h1>
-          <p className="text-[#F5F1E6]/75 text-sm sm:text-base max-w-xl mx-auto">
+          <p className="text-[#173D2E]/80 text-sm sm:text-base max-w-xl mx-auto font-medium">
             Free shipping across Pakistan on orders over Rs. 5,000. Pay cash upon delivery at your doorstep.
           </p>
         </div>
@@ -237,8 +237,8 @@ export default function App() {
               onClick={() => setSelectedCategory(cat)}
               className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
                 selectedCategory === cat
-                  ? 'bg-[#BF9F62] text-[#173D2E] font-bold shadow-lg shadow-[#BF9F62]/20'
-                  : 'bg-[#173D2E] border border-[#BF9F62]/25 text-[#F5F1E6]/80 hover:bg-[#20513e] hover:text-[#F5F1E6]'
+                  ? 'bg-[#173D2E] text-[#F5F1E6] font-bold shadow-md'
+                  : 'bg-[#EFEAE0] border border-[#173D2E]/15 text-[#173D2E]/80 hover:bg-[#E5DEC3] hover:text-[#173D2E]'
               }`}
             >
               {cat}
@@ -249,29 +249,29 @@ export default function App() {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-24 space-y-4">
             <Loader2 className="w-10 h-10 text-[#BF9F62] animate-spin" />
-            <p className="text-[#F5F1E6]/70 text-sm font-medium">Loading Bazaar Retail catalog...</p>
+            <p className="text-[#173D2E]/70 text-sm font-medium">Loading Bazaar Retail catalog...</p>
           </div>
         ) : filteredProducts.length === 0 ? (
-          <div className="text-center py-20 bg-[#173D2E]/40 rounded-3xl border border-[#BF9F62]/20 my-8">
-            <ShoppingBag className="w-12 h-12 text-[#BF9F62]/50 mx-auto mb-3" />
-            <h3 className="text-lg font-semibold text-[#F5F1E6]">No products found</h3>
-            <p className="text-[#F5F1E6]/60 text-sm mt-1">Try adjusting your search or category filter.</p>
+          <div className="text-center py-20 bg-[#EFEAE0]/60 rounded-3xl border border-[#173D2E]/15 my-8">
+            <ShoppingBag className="w-12 h-12 text-[#173D2E]/40 mx-auto mb-3" />
+            <h3 className="text-lg font-semibold text-[#173D2E]">No products found</h3>
+            <p className="text-[#173D2E]/60 text-sm mt-1">Try adjusting your search or category filter.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
             {filteredProducts.map((product) => (
               <div
                 key={product.id}
-                className="group bg-[#173D2E] rounded-2xl border border-[#BF9F62]/25 hover:border-[#BF9F62]/60 overflow-hidden flex flex-col transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-[#BF9F62]/10"
+                className="group bg-[#EFEAE0]/80 rounded-2xl border border-[#173D2E]/15 hover:border-[#BF9F62] overflow-hidden flex flex-col transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
               >
-                <div className="relative aspect-square overflow-hidden bg-[#102B20]">
+                <div className="relative aspect-square overflow-hidden bg-[#E5DEC3]">
                   <img
                     src={product.image || 'https://via.placeholder.com/400x400?text=No+Image'}
                     alt={product.name || 'Product'}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                   {product.category && (
-                    <span className="absolute top-3 left-3 bg-[#102B20]/90 backdrop-blur-md border border-[#BF9F62]/30 text-[#BF9F62] text-xs font-semibold px-2.5 py-1 rounded-lg">
+                    <span className="absolute top-3 left-3 bg-[#173D2E] text-[#F5F1E6] text-xs font-semibold px-2.5 py-1 rounded-lg">
                       {product.category}
                     </span>
                   )}
@@ -279,25 +279,25 @@ export default function App() {
 
                 <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
                   <div>
-                    <h3 className="font-bold text-[#F5F1E6] group-hover:text-[#BF9F62] transition-colors line-clamp-1">
+                    <h3 className="font-bold text-[#173D2E] group-hover:text-[#9E7E38] transition-colors line-clamp-1">
                       {product.name}
                     </h3>
-                    <p className="text-[#F5F1E6]/65 text-xs line-clamp-2 mt-1">
+                    <p className="text-[#173D2E]/70 text-xs line-clamp-2 mt-1">
                       {product.description || 'Premium quality guaranteed by Bazaar Retail.'}
                     </p>
                   </div>
 
-                  <div className="flex items-center justify-between pt-2 border-t border-[#BF9F62]/20">
+                  <div className="flex items-center justify-between pt-2 border-t border-[#173D2E]/15">
                     <div>
-                      <span className="text-xs text-[#F5F1E6]/50 block">Price</span>
-                      <span className="text-xl font-extrabold text-[#BF9F62]">
+                      <span className="text-xs text-[#173D2E]/60 block font-medium">Price</span>
+                      <span className="text-xl font-extrabold text-[#173D2E]">
                         Rs. {Number(product.price || 0).toLocaleString()}
                       </span>
                     </div>
 
                     <button
                       onClick={() => addToCart(product)}
-                      className="bg-[#BF9F62] hover:bg-[#a88a52] text-[#173D2E] font-bold px-4 py-2.5 rounded-xl text-sm transition-all flex items-center gap-2 active:scale-95 shadow-md shadow-[#BF9F62]/10"
+                      className="bg-[#BF9F62] hover:bg-[#A88A52] text-[#173D2E] font-bold px-4 py-2.5 rounded-xl text-sm transition-all flex items-center gap-2 active:scale-95 shadow-sm"
                     >
                       <ShoppingCart className="w-4 h-4" /> Add
                     </button>
@@ -311,16 +311,16 @@ export default function App() {
 
       {/* CART DRAWER */}
       {isCartOpen && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-md bg-[#173D2E] h-full shadow-2xl flex flex-col justify-between border-l border-[#BF9F62]/30">
-            <div className="p-5 border-b border-[#BF9F62]/20 flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-[#F5F1E6] h-full shadow-2xl flex flex-col justify-between border-l border-[#173D2E]/20">
+            <div className="p-5 border-b border-[#173D2E]/15 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <ShoppingCart className="w-5 h-5 text-[#BF9F62]" />
-                <h2 className="text-lg font-bold text-[#F5F1E6]">Your Cart</h2>
+                <ShoppingCart className="w-5 h-5 text-[#173D2E]" />
+                <h2 className="text-lg font-bold text-[#173D2E]">Your Cart</h2>
               </div>
               <button
                 onClick={() => setIsCartOpen(false)}
-                className="p-1 rounded-lg text-[#F5F1E6]/60 hover:text-[#F5F1E6] hover:bg-[#102B20]"
+                className="p-1 rounded-lg text-[#173D2E]/60 hover:text-[#173D2E] hover:bg-[#EFEAE0]"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -328,39 +328,39 @@ export default function App() {
 
             <div className="p-5 flex-1 overflow-y-auto space-y-4">
               {cart.length === 0 ? (
-                <div className="text-center py-16 text-[#F5F1E6]/40">
-                  <ShoppingBag className="w-12 h-12 mx-auto mb-2 opacity-50 text-[#BF9F62]" />
+                <div className="text-center py-16 text-[#173D2E]/50">
+                  <ShoppingBag className="w-12 h-12 mx-auto mb-2 opacity-40 text-[#173D2E]" />
                   <p>Your shopping cart is empty.</p>
                 </div>
               ) : (
                 cart.map((item) => (
                   <div
                     key={item.id}
-                    className="flex gap-4 p-3 bg-[#102B20]/60 border border-[#BF9F62]/20 rounded-xl items-center"
+                    className="flex gap-4 p-3 bg-[#EFEAE0] border border-[#173D2E]/15 rounded-xl items-center"
                   >
                     <img
                       src={item.image || 'https://via.placeholder.com/100'}
                       alt={item.name}
-                      className="w-16 h-16 rounded-lg object-cover bg-[#102B20]"
+                      className="w-16 h-16 rounded-lg object-cover bg-[#E5DEC3]"
                     />
                     <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-semibold text-[#F5F1E6] truncate">
+                      <h4 className="text-sm font-semibold text-[#173D2E] truncate">
                         {item.name}
                       </h4>
-                      <p className="text-xs text-[#BF9F62] font-bold mt-0.5">
+                      <p className="text-xs text-[#173D2E] font-bold mt-0.5">
                         Rs. {Number(item.price || 0).toLocaleString()}
                       </p>
                       <div className="flex items-center gap-2 mt-2">
                         <button
                           onClick={() => updateQuantity(item.id, -1)}
-                          className="w-6 h-6 rounded-md bg-[#235843] flex items-center justify-center text-[#F5F1E6] hover:bg-[#2e6d54]"
+                          className="w-6 h-6 rounded-md bg-[#E5DEC3] flex items-center justify-center text-[#173D2E] hover:bg-[#173D2E] hover:text-[#F5F1E6]"
                         >
                           <Minus className="w-3 h-3" />
                         </button>
-                        <span className="text-xs font-bold text-[#F5F1E6]">{item.quantity}</span>
+                        <span className="text-xs font-bold text-[#173D2E]">{item.quantity}</span>
                         <button
                           onClick={() => updateQuantity(item.id, 1)}
-                          className="w-6 h-6 rounded-md bg-[#235843] flex items-center justify-center text-[#F5F1E6] hover:bg-[#2e6d54]"
+                          className="w-6 h-6 rounded-md bg-[#E5DEC3] flex items-center justify-center text-[#173D2E] hover:bg-[#173D2E] hover:text-[#F5F1E6]"
                         >
                           <Plus className="w-3 h-3" />
                         </button>
@@ -368,7 +368,7 @@ export default function App() {
                     </div>
                     <button
                       onClick={() => removeFromCart(item.id)}
-                      className="text-[#F5F1E6]/50 hover:text-rose-400 p-1"
+                      className="text-[#173D2E]/50 hover:text-rose-600 p-1"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -378,19 +378,19 @@ export default function App() {
             </div>
 
             {cart.length > 0 && (
-              <div className="p-5 border-t border-[#BF9F62]/20 space-y-4 bg-[#102B20]/80">
+              <div className="p-5 border-t border-[#173D2E]/15 space-y-4 bg-[#EFEAE0]">
                 <div className="space-y-2 text-sm">
-                  <div className="flex justify-between text-[#F5F1E6]/70">
+                  <div className="flex justify-between text-[#173D2E]/70 font-medium">
                     <span>Subtotal</span>
                     <span>Rs. {subtotal.toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between text-[#F5F1E6]/70">
+                  <div className="flex justify-between text-[#173D2E]/70 font-medium">
                     <span>Shipping Fee</span>
                     <span>{shippingFee === 0 ? 'FREE' : `Rs. ${shippingFee}`}</span>
                   </div>
-                  <div className="flex justify-between text-base font-bold text-[#F5F1E6] pt-2 border-t border-[#BF9F62]/20">
+                  <div className="flex justify-between text-base font-bold text-[#173D2E] pt-2 border-t border-[#173D2E]/15">
                     <span>Total Amount</span>
-                    <span className="text-[#BF9F62]">Rs. {grandTotal.toLocaleString()}</span>
+                    <span className="text-[#173D2E]">Rs. {grandTotal.toLocaleString()}</span>
                   </div>
                 </div>
 
@@ -399,7 +399,7 @@ export default function App() {
                     setIsCartOpen(false);
                     setIsCheckoutOpen(true);
                   }}
-                  className="w-full bg-[#BF9F62] hover:bg-[#a88a52] text-[#173D2E] py-3 rounded-xl font-black text-sm transition-all shadow-lg shadow-[#BF9F62]/20"
+                  className="w-full bg-[#173D2E] hover:bg-[#235843] text-[#F5F1E6] py-3 rounded-xl font-bold text-sm transition-all shadow-md"
                 >
                   Proceed to Checkout (COD)
                 </button>
@@ -411,25 +411,25 @@ export default function App() {
 
       {/* CHECKOUT MODAL */}
       {isCheckoutOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md">
-          <div className="bg-[#173D2E] border border-[#BF9F62]/30 rounded-3xl w-full max-w-lg p-6 sm:p-8 relative shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+          <div className="bg-[#F5F1E6] border border-[#173D2E]/20 rounded-3xl w-full max-w-lg p-6 sm:p-8 relative shadow-2xl">
             <button
               onClick={() => {
                 setIsCheckoutOpen(false);
                 setOrderSubmitted(false);
               }}
-              className="absolute top-5 right-5 p-1 rounded-lg text-[#F5F1E6]/60 hover:text-[#F5F1E6]"
+              className="absolute top-5 right-5 p-1 rounded-lg text-[#173D2E]/60 hover:text-[#173D2E]"
             >
               <X className="w-5 h-5" />
             </button>
 
             {orderSubmitted ? (
               <div className="text-center py-8 space-y-4">
-                <div className="w-16 h-16 bg-[#BF9F62]/15 border border-[#BF9F62]/40 text-[#BF9F62] rounded-full flex items-center justify-center mx-auto">
+                <div className="w-16 h-16 bg-[#173D2E]/10 border border-[#173D2E]/30 text-[#173D2E] rounded-full flex items-center justify-center mx-auto">
                   <CheckCircle2 className="w-8 h-8" />
                 </div>
-                <h3 className="text-2xl font-bold text-[#F5F1E6]">Order Confirmed!</h3>
-                <p className="text-[#F5F1E6]/70 text-sm max-w-sm mx-auto">
+                <h3 className="text-2xl font-bold text-[#173D2E]">Order Confirmed!</h3>
+                <p className="text-[#173D2E]/75 text-sm max-w-sm mx-auto">
                   Thank you for shopping with Bazaar Retail. Our representative will contact you via WhatsApp shortly to confirm delivery.
                 </p>
                 <button
@@ -437,7 +437,7 @@ export default function App() {
                     setIsCheckoutOpen(false);
                     setOrderSubmitted(false);
                   }}
-                  className="mt-4 bg-[#102B20] border border-[#BF9F62]/30 hover:bg-[#20513e] text-[#F5F1E6] px-6 py-2.5 rounded-xl font-semibold text-sm"
+                  className="mt-4 bg-[#173D2E] hover:bg-[#235843] text-[#F5F1E6] px-6 py-2.5 rounded-xl font-semibold text-sm"
                 >
                   Continue Shopping
                 </button>
@@ -445,15 +445,15 @@ export default function App() {
             ) : (
               <form onSubmit={handlePlaceOrder} className="space-y-4">
                 <div>
-                  <h2 className="text-xl font-extrabold text-[#F5F1E6]">Cash on Delivery Checkout</h2>
-                  <p className="text-xs text-[#F5F1E6]/60 mt-1">
+                  <h2 className="text-xl font-extrabold text-[#173D2E]">Cash on Delivery Checkout</h2>
+                  <p className="text-xs text-[#173D2E]/70 mt-1">
                     Provide complete delivery details for shipping by Bazaar Retail.
                   </p>
                 </div>
 
                 <div className="space-y-3">
                   <div>
-                    <label className="text-xs font-semibold text-[#F5F1E6] block mb-1">
+                    <label className="text-xs font-semibold text-[#173D2E] block mb-1">
                       Full Name
                     </label>
                     <input
@@ -462,77 +462,77 @@ export default function App() {
                       placeholder="e.g. Ali Ahmed"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="w-full bg-[#102B20] border border-[#BF9F62]/30 rounded-xl px-3.5 py-2.5 text-sm text-[#F5F1E6] focus:outline-none focus:border-[#BF9F62]"
+                      className="w-full bg-[#EFEAE0] border border-[#173D2E]/20 rounded-xl px-3.5 py-2.5 text-sm text-[#173D2E] focus:outline-none focus:border-[#BF9F62]"
                     />
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold text-[#F5F1E6] block mb-1">
+                    <label className="text-xs font-semibold text-[#173D2E] block mb-1">
                       WhatsApp / Phone Number
                     </label>
                     <div className="relative">
-                      <Phone className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#BF9F62]" />
+                      <Phone className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#173D2E]/60" />
                       <input
                         type="tel"
                         required
                         placeholder="0300 1234567"
                         value={formData.phone}
                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        className="w-full bg-[#102B20] border border-[#BF9F62]/30 rounded-xl pl-9 pr-3.5 py-2.5 text-sm text-[#F5F1E6] focus:outline-none focus:border-[#BF9F62]"
+                        className="w-full bg-[#EFEAE0] border border-[#173D2E]/20 rounded-xl pl-9 pr-3.5 py-2.5 text-sm text-[#173D2E] focus:outline-none focus:border-[#BF9F62]"
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="text-xs font-semibold text-[#F5F1E6] block mb-1">
+                      <label className="text-xs font-semibold text-[#173D2E] block mb-1">
                         City
                       </label>
                       <div className="relative">
-                        <Building className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#BF9F62]" />
+                        <Building className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#173D2E]/60" />
                         <input
                           type="text"
                           required
                           placeholder="e.g. Lahore / Karachi"
                           value={formData.city}
                           onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                          className="w-full bg-[#102B20] border border-[#BF9F62]/30 rounded-xl pl-9 pr-3.5 py-2.5 text-sm text-[#F5F1E6] focus:outline-none focus:border-[#BF9F62]"
+                          className="w-full bg-[#EFEAE0] border border-[#173D2E]/20 rounded-xl pl-9 pr-3.5 py-2.5 text-sm text-[#173D2E] focus:outline-none focus:border-[#BF9F62]"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="text-xs font-semibold text-[#F5F1E6] block mb-1">
+                      <label className="text-xs font-semibold text-[#173D2E] block mb-1">
                         Shipping Fee
                       </label>
-                      <div className="bg-[#102B20] border border-[#BF9F62]/30 rounded-xl px-3.5 py-2.5 text-sm font-bold text-[#BF9F62]">
+                      <div className="bg-[#EFEAE0] border border-[#173D2E]/20 rounded-xl px-3.5 py-2.5 text-sm font-bold text-[#173D2E]">
                         {shippingFee === 0 ? 'FREE Shipping' : `Rs. ${shippingFee}`}
                       </div>
                     </div>
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold text-[#F5F1E6] block mb-1">
+                    <label className="text-xs font-semibold text-[#173D2E] block mb-1">
                       Full Delivery Address
                     </label>
                     <div className="relative">
-                      <MapPin className="w-4 h-4 absolute left-3 top-3 text-[#BF9F62]" />
+                      <MapPin className="w-4 h-4 absolute left-3 top-3 text-[#173D2E]/60" />
                       <textarea
                         required
                         rows="2"
                         placeholder="House #, Street #, Sector / Area..."
                         value={formData.address}
                         onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                        className="w-full bg-[#102B20] border border-[#BF9F62]/30 rounded-xl pl-9 pr-3.5 py-2 text-sm text-[#F5F1E6] focus:outline-none focus:border-[#BF9F62]"
+                        className="w-full bg-[#EFEAE0] border border-[#173D2E]/20 rounded-xl pl-9 pr-3.5 py-2 text-sm text-[#173D2E] focus:outline-none focus:border-[#BF9F62]"
                       ></textarea>
                     </div>
                   </div>
                 </div>
 
-                <div className="pt-2 border-t border-[#BF9F62]/20 flex items-center justify-between">
+                <div className="pt-2 border-t border-[#173D2E]/15 flex items-center justify-between">
                   <div>
-                    <span className="text-xs text-[#F5F1E6]/50 block">Total Payable</span>
-                    <span className="text-lg font-black text-[#BF9F62]">
+                    <span className="text-xs text-[#173D2E]/60 block">Total Payable</span>
+                    <span className="text-lg font-black text-[#173D2E]">
                       Rs. {grandTotal.toLocaleString()}
                     </span>
                   </div>
@@ -540,7 +540,7 @@ export default function App() {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="bg-[#BF9F62] hover:bg-[#a88a52] text-[#173D2E] font-black px-6 py-2.5 rounded-xl text-sm transition-all shadow-lg shadow-[#BF9F62]/20 flex items-center gap-2 disabled:opacity-50"
+                    className="bg-[#173D2E] hover:bg-[#235843] text-[#F5F1E6] font-bold px-6 py-2.5 rounded-xl text-sm transition-all shadow-md flex items-center gap-2 disabled:opacity-50"
                   >
                     {isSubmitting ? (
                       <>
