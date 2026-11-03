@@ -18,7 +18,8 @@ import {
   ShieldCheck,
   MessageCircle,
   Mail,
-  Menu
+  Menu,
+  Send
 } from 'lucide-react';
 
 // Supabase Client Setup
@@ -49,6 +50,16 @@ export default function App() {
   const [newsletterSubmitted, setNewsletterSubmitted] = useState(false);
   const [isSubmittingNewsletter, setIsSubmittingNewsletter] = useState(false);
 
+  // On-Site Chatbot States
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState([
+    {
+      sender: 'bot',
+      text: 'Assalam-o-Alaikum! 👋 Bazaar Retail AI Support mein khushamdeed. Aap kis baare mein poochna chahte hain?'
+    }
+  ]);
+  const [userQuery, setUserQuery] = useState('');
+
   // Checkout Form State
   const [formData, setFormData] = useState({
     name: '',
@@ -56,6 +67,14 @@ export default function App() {
     city: '',
     address: ''
   });
+
+  // Knowledge Base for Chatbot
+  const faqAnswers = {
+    delivery: "Bazaar Retail ki delivery poore Pakistan mein 3 se 7 working days ke andar ho jaati hai. Delivery charges Rs. 250 hain.",
+    cod: "Ji bilkul! 100% Cash on Delivery (COD) available hai. Parcel receive karne par doorstep par cash payment karein.",
+    returns: "7-Day Return Policy hai. Agar parcel damaged ya wrong aaye toh hum direct replacement ya refund issue karte hain.",
+    tracking: "Order confirm hote hi hum phone/WhatsApp par tracking link provide karte hain taakay aap courier status dekh sakein."
+  };
 
   // Async Product Fetch & Newsletter Trigger
   useEffect(() => {
@@ -90,7 +109,7 @@ export default function App() {
 
     loadProducts();
 
-    // Trigger Newsletter Popup after 1.5 seconds if not already subscribed/dismissed
+    // Trigger Newsletter Popup after 1.5 seconds if not already dismissed
     const timer = setTimeout(() => {
       if (isMounted) {
         const dismissed = sessionStorage.getItem('newsletter_dismissed');
@@ -113,13 +132,12 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Close Newsletter Modal
+  // Newsletter Logic
   const closeNewsletter = () => {
     setIsNewsletterOpen(false);
     sessionStorage.setItem('newsletter_dismissed', 'true');
   };
 
-  // Handle Newsletter Subscription
   const handleNewsletterSubmit = async (e) => {
     e.preventDefault();
     if (!newsletterEmail) return;
@@ -143,6 +161,42 @@ export default function App() {
     } finally {
       setIsSubmittingNewsletter(false);
     }
+  };
+
+  // Chatbot Logic
+  const handleOptionClick = (question, type) => {
+    setChatMessages((prev) => [
+      ...prev,
+      { sender: 'user', text: question },
+      { sender: 'bot', text: faqAnswers[type] }
+    ]);
+  };
+
+  const handleSendMessage = (e) => {
+    e.preventDefault();
+    if (!userQuery.trim()) return;
+
+    const input = userQuery.toLowerCase();
+    let botReply = "Shukriya! Aapka sawal record ho gaya hai. Hamare support agent jald hi aap se rabta karenge.";
+
+    if (input.includes('delivery') || input.includes('time') || input.includes('dino') || input.includes('kab')) {
+      botReply = faqAnswers.delivery;
+    } else if (input.includes('cod') || input.includes('cash') || input.includes('pay') || input.includes('paisa')) {
+      botReply = faqAnswers.cod;
+    } else if (input.includes('return') || input.includes('refund') || input.includes('wapas') || input.includes('damage')) {
+      botReply = faqAnswers.returns;
+    } else if (input.includes('track') || input.includes('status') || input.includes('order')) {
+      botReply = faqAnswers.tracking;
+    } else if (input.includes('hi') || input.includes('hello') || input.includes('slam') || input.includes('assalam')) {
+      botReply = "Walaikum Assalam! Main Bazaar Retail Bot hoon. Delivery, COD ya Return policy ke hawale se koi sawal ho toh zaroor batayein.";
+    }
+
+    setChatMessages((prev) => [
+      ...prev,
+      { sender: 'user', text: userQuery },
+      { sender: 'bot', text: botReply }
+    ]);
+    setUserQuery('');
   };
 
   // Cart Functions
@@ -177,9 +231,9 @@ export default function App() {
     setCart((prevCart) => prevCart.filter((item) => item.id !== id));
   };
 
-  // Pricing Calculations
+  // Pricing Calculations (Flat Rs. 250 Shipping)
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const shippingFee = subtotal >= 5000 || subtotal === 0 ? 0 : 250;
+  const shippingFee = subtotal === 0 ? 0 : 250;
   const grandTotal = subtotal + shippingFee;
 
   // Order Submission
@@ -397,7 +451,7 @@ export default function App() {
                 </div>
                 <div className="flex flex-col items-center space-y-1">
                   <MessageCircle className="w-6 h-6 text-[#BF9F62]" />
-                  <span className="font-bold text-xs uppercase tracking-wide">WhatsApp Support</span>
+                  <span className="font-bold text-xs uppercase tracking-wide">24/7 AI Support</span>
                 </div>
               </div>
             </section>
@@ -503,7 +557,7 @@ export default function App() {
                   </div>
                   <div className="p-4 bg-[#F5F1E6] rounded-2xl border border-[#173D2E]/10">
                     <h3 className="font-bold text-[#173D2E] text-base mb-1">Real Support</h3>
-                    <p>Message us on WhatsApp and a real customer service team member replies.</p>
+                    <p>Use our 24/7 on-site AI Chatbot or contact us for instant resolution.</p>
                   </div>
                 </div>
               </section>
@@ -520,7 +574,7 @@ export default function App() {
                   <div className="space-y-2">
                     <div className="w-10 h-10 bg-[#173D2E] text-[#BF9F62] rounded-full flex items-center justify-center font-bold text-lg mx-auto">2</div>
                     <h4 className="font-bold text-[#173D2E]">Address Confirmation</h4>
-                    <p className="text-xs text-[#173D2E]/70">Enter details. We confirm your parcel via call or WhatsApp.</p>
+                    <p className="text-xs text-[#173D2E]/70">Enter details. We confirm your parcel via call or message.</p>
                   </div>
                   <div className="space-y-2">
                     <div className="w-10 h-10 bg-[#173D2E] text-[#BF9F62] rounded-full flex items-center justify-center font-bold text-lg mx-auto">3</div>
@@ -555,7 +609,7 @@ export default function App() {
               <ul className="list-disc pl-5 space-y-2">
                 <li>Clear product information and honest item descriptions.</li>
                 <li>Reliable Cash on Delivery across Karachi, Lahore, Islamabad, and all major Pakistani cities.</li>
-                <li>Fast, friendly support directly on WhatsApp.</li>
+                <li>Instant 24/7 support right on the website.</li>
                 <li>A straightforward, hassle-free 7-day return process if an item arrives damaged or incorrect.</li>
               </ul>
             </div>
@@ -578,12 +632,12 @@ export default function App() {
 
               <div>
                 <h3 className="font-bold text-[#173D2E] text-lg mb-1">Processing & Order Confirmation</h3>
-                <p>To prevent fake or mistaken orders, every order is confirmed by phone call or WhatsApp before dispatch. Dispatches take place within 1 to 2 working days after confirmation.</p>
+                <p>To prevent fake or mistaken orders, every order is confirmed by phone call or SMS before dispatch. Dispatches take place within 1 to 2 working days after confirmation.</p>
               </div>
 
               <div>
                 <h3 className="font-bold text-[#173D2E] text-lg mb-1">Delivery Time & Charges</h3>
-                <p>Standard delivery takes <strong>3 to 7 working days</strong> across Pakistan. Delivery is Rs. 250 per order.</p>
+                <p>Standard delivery takes <strong>3 to 7 working days</strong> across Pakistan. Delivery charges are Rs. 250 per order.</p>
               </div>
 
               <div>
@@ -623,7 +677,7 @@ export default function App() {
 
               <div>
                 <h3 className="font-bold text-[#173D2E] text-lg mb-2">How to Request a Return</h3>
-                <p>Message our support team on WhatsApp with your order number and photos/video of the issue within 7 days. Once verified, we will issue a replacement or refund via JazzCash, EasyPaisa, or Bank Transfer within 5 to 7 working days.</p>
+                <p>Contact our customer support team with your order number and photos/video of the issue within 7 days. Once verified, we will issue a replacement or refund via JazzCash, EasyPaisa, or Bank Transfer within 5 to 7 working days.</p>
               </div>
             </div>
           </div>
@@ -645,7 +699,7 @@ export default function App() {
 
               <div className="p-5 bg-[#EFEAE0]/80 rounded-2xl border border-[#173D2E]/15">
                 <h3 className="font-bold text-[#173D2E] text-base mb-1">How long does delivery take?</h3>
-                <p className="text-xs sm:text-sm text-[#173D2E]/80">Delivery typically takes 3 to 7 working days after phone or WhatsApp confirmation.</p>
+                <p className="text-xs sm:text-sm text-[#173D2E]/80">Delivery typically takes 3 to 7 working days after phone or order confirmation.</p>
               </div>
 
               <div className="p-5 bg-[#EFEAE0]/80 rounded-2xl border border-[#173D2E]/15">
@@ -655,7 +709,7 @@ export default function App() {
 
               <div className="p-5 bg-[#EFEAE0]/80 rounded-2xl border border-[#173D2E]/15">
                 <h3 className="font-bold text-[#173D2E] text-base mb-1">What if my item arrives damaged?</h3>
-                <p className="text-xs sm:text-sm text-[#173D2E]/80">Contact us on WhatsApp within 7 days with pictures/video, and we will send a free replacement.</p>
+                <p className="text-xs sm:text-sm text-[#173D2E]/80">Contact us within 7 days with pictures/video, and we will send a free replacement.</p>
               </div>
             </div>
           </div>
@@ -711,6 +765,107 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      {/* ON-SITE AUTOMATED CHATBOT WIDGET */}
+      <div className="fixed bottom-6 right-6 z-50">
+        {isChatOpen && (
+          <div className="mb-4 w-80 sm:w-88 bg-[#F5F1E6] border border-[#173D2E]/20 rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[420px] transition-all">
+            {/* Header */}
+            <div className="bg-[#173D2E] text-[#F5F1E6] p-4 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-[#BF9F62] text-[#173D2E] flex items-center justify-center font-bold text-xs">
+                  BR
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm leading-none">Bazaar Retail Bot</h4>
+                  <span className="text-[10px] text-[#BF9F62]">Instant AI Support 24/7</span>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsChatOpen(false)}
+                className="text-[#F5F1E6]/70 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Messages Window */}
+            <div className="flex-1 p-4 overflow-y-auto space-y-3 text-xs bg-[#EFEAE0]/40">
+              {chatMessages.map((msg, index) => (
+                <div
+                  key={index}
+                  className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div
+                    className={`max-w-[80%] p-3 rounded-2xl ${
+                      msg.sender === 'user'
+                        ? 'bg-[#173D2E] text-[#F5F1E6] rounded-br-none'
+                        : 'bg-white text-[#173D2E] border border-[#173D2E]/10 shadow-sm rounded-bl-none'
+                    }`}
+                  >
+                    {msg.text}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Quick Suggestion Chips */}
+            <div className="p-2 bg-[#EFEAE0] border-t border-[#173D2E]/10 flex flex-wrap gap-1.5">
+              <button
+                onClick={() => handleOptionClick('Delivery time kya hai?', 'delivery')}
+                className="text-[10px] bg-white text-[#173D2E] border border-[#173D2E]/20 px-2.5 py-1 rounded-full font-medium hover:bg-[#173D2E] hover:text-[#F5F1E6] transition-colors"
+              >
+                🚚 Delivery Time
+              </button>
+              <button
+                onClick={() => handleOptionClick('Cash on delivery available hai?', 'cod')}
+                className="text-[10px] bg-white text-[#173D2E] border border-[#173D2E]/20 px-2.5 py-1 rounded-full font-medium hover:bg-[#173D2E] hover:text-[#F5F1E6] transition-colors"
+              >
+                💵 Cash on Delivery
+              </button>
+              <button
+                onClick={() => handleOptionClick('Return policy kya hai?', 'returns')}
+                className="text-[10px] bg-white text-[#173D2E] border border-[#173D2E]/20 px-2.5 py-1 rounded-full font-medium hover:bg-[#173D2E] hover:text-[#F5F1E6] transition-colors"
+              >
+                🔄 Return Policy
+              </button>
+            </div>
+
+            {/* Input Box */}
+            <form onSubmit={handleSendMessage} className="p-2.5 bg-[#F5F1E6] border-t border-[#173D2E]/10 flex gap-2">
+              <input
+                type="text"
+                placeholder="Ask a question..."
+                value={userQuery}
+                onChange={(e) => setUserQuery(e.target.value)}
+                className="flex-1 bg-[#EFEAE0] border border-[#173D2E]/20 rounded-xl px-3 py-1.5 text-xs text-[#173D2E] focus:outline-none focus:border-[#BF9F62]"
+              />
+              <button
+                type="submit"
+                className="bg-[#173D2E] text-[#F5F1E6] p-2 rounded-xl text-xs font-bold hover:bg-[#235843] flex items-center justify-center"
+              >
+                <Send className="w-3.5 h-3.5" />
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* Toggle Chatbot Button */}
+        <button
+          onClick={() => setIsChatOpen(!isChatOpen)}
+          className="w-14 h-14 bg-[#173D2E] border-2 border-[#BF9F62] text-[#BF9F62] rounded-full flex items-center justify-center shadow-2xl hover:scale-105 transition-all relative"
+        >
+          {isChatOpen ? (
+            <X className="w-6 h-6 text-[#F5F1E6]" />
+          ) : (
+            <>
+              <MessageCircle className="w-6 h-6" />
+              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-[#BF9F62] border-2 border-[#102B20] rounded-full animate-ping" />
+              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-[#BF9F62] border-2 border-[#102B20] rounded-full" />
+            </>
+          )}
+        </button>
+      </div>
 
       {/* EMAIL NEWSLETTER POPUP MODAL */}
       {isNewsletterOpen && (
@@ -864,7 +1019,7 @@ export default function App() {
                   </div>
                   <div className="flex justify-between text-[#173D2E]/70 font-medium">
                     <span>Shipping Fee</span>
-                    <span>{shippingFee === 0 ? 'FREE' : `Rs. ${shippingFee}`}</span>
+                    <span>Rs. {shippingFee}</span>
                   </div>
                   <div className="flex justify-between text-base font-bold text-[#173D2E] pt-2 border-t border-[#173D2E]/15">
                     <span>Total Amount</span>
@@ -908,7 +1063,7 @@ export default function App() {
                 </div>
                 <h3 className="text-2xl font-bold text-[#173D2E]">Order Confirmed!</h3>
                 <p className="text-[#173D2E]/75 text-sm max-w-sm mx-auto">
-                  Thank you for shopping with Bazaar Retail. Our representative will contact you via WhatsApp shortly to confirm delivery.
+                  Thank you for shopping with Bazaar Retail. Our representative will contact you shortly to confirm delivery.
                 </p>
                 <button
                   onClick={() => {
@@ -984,7 +1139,7 @@ export default function App() {
                         Shipping Fee
                       </label>
                       <div className="bg-[#EFEAE0] border border-[#173D2E]/20 rounded-xl px-3.5 py-2.5 text-sm font-bold text-[#173D2E]">
-                        {shippingFee === 0 ? 'FREE Shipping' : `Rs. ${shippingFee}`}
+                        Rs. {shippingFee}
                       </div>
                     </div>
                   </div>
