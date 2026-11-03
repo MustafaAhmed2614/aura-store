@@ -12,7 +12,11 @@ import {
   Loader2,
   Phone,
   MapPin,
-  Building
+  Building,
+  Truck,
+  RotateCcw,
+  ShieldCheck,
+  MessageCircle
 } from 'lucide-react';
 
 // Supabase Client Setup
@@ -32,6 +36,9 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [orderSubmitted, setOrderSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Active Page Navigation State ('home', 'about', 'shipping', 'returns', 'faq', 'contact')
+  const [currentPage, setCurrentPage] = useState('home');
 
   // Checkout Form State
   const [formData, setFormData] = useState({
@@ -78,6 +85,12 @@ export default function App() {
       isMounted = false;
     };
   }, []);
+
+  // Helper to change pages and scroll to top
+  const navigateTo = (pageName) => {
+    setCurrentPage(pageName);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   // Cart Functions
   const addToCart = (product) => {
@@ -166,148 +179,445 @@ export default function App() {
   });
 
   return (
-    <div className="min-h-screen bg-[#F5F1E6] text-[#173D2E] font-sans pb-20">
-      {/* NAVBAR */}
-      <nav className="sticky top-0 z-40 bg-[#F5F1E6]/90 backdrop-blur-md border-b border-[#173D2E]/15 px-4 lg:px-8 py-4 shadow-sm">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-          {/* Logo Section */}
-          <div
-            className="flex items-center gap-3 cursor-pointer"
-            onClick={() => setSelectedCategory('All')}
-          >
-            <div className="w-10 h-10 rounded-xl bg-[#173D2E] flex items-center justify-center shadow-md">
-              <span className="font-extrabold text-[#BF9F62] tracking-tight text-lg">BR</span>
-            </div>
-            <div className="flex flex-col">
+    <div className="min-h-screen bg-[#F5F1E6] text-[#173D2E] font-sans flex flex-col justify-between">
+      <div>
+        {/* NAVBAR */}
+        <nav className="sticky top-0 z-40 bg-[#F5F1E6]/95 backdrop-blur-md border-b border-[#173D2E]/15 px-4 lg:px-8 py-3.5 shadow-sm">
+          <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            {/* Logo */}
+            <div
+              className="flex items-center gap-3 cursor-pointer"
+              onClick={() => navigateTo('home')}
+            >
+              <div className="w-10 h-10 rounded-xl bg-[#173D2E] flex items-center justify-center shadow-md">
+                <span className="font-extrabold text-[#BF9F62] tracking-tight text-lg">BR</span>
+              </div>
               <span className="text-xl font-black text-[#173D2E] tracking-wider">
                 BAZAAR RETAIL
               </span>
             </div>
-          </div>
 
-          {/* Search Bar */}
-          <div className="flex-1 max-w-md hidden md:block relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#173D2E]/60" />
-            <input
-              type="text"
-              placeholder="Search products in Bazaar Retail..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-[#EFEAE0] border border-[#173D2E]/20 rounded-xl pl-9 pr-4 py-2 text-sm text-[#173D2E] placeholder-[#173D2E]/50 focus:outline-none focus:border-[#BF9F62] transition-all"
-            />
-          </div>
-
-          {/* Cart Button */}
-          <button
-            onClick={() => setIsCartOpen(true)}
-            className="relative p-2.5 rounded-xl bg-[#EFEAE0] border border-[#173D2E]/20 hover:bg-[#E5DEC3] text-[#173D2E] transition-all"
-          >
-            <ShoppingCart className="w-5 h-5" />
-            {cart.length > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 bg-[#BF9F62] text-[#173D2E] text-xs font-black w-5 h-5 rounded-full flex items-center justify-center shadow-md animate-pulse">
-                {cart.reduce((a, c) => a + c.quantity, 0)}
-              </span>
-            )}
-          </button>
-        </div>
-      </nav>
-
-      {/* HERO BANNER */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-[#BF9F62]/20 via-[#EFEAE0]/50 to-transparent py-14 px-4 border-b border-[#173D2E]/10">
-        <div className="max-w-4xl mx-auto text-center space-y-4">
-          <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#173D2E]/10 border border-[#173D2E]/20 text-[#173D2E] text-xs font-bold uppercase tracking-widest">
-            <Sparkles className="w-3.5 h-3.5 text-[#BF9F62]" /> Premium Shopping Experience
-          </span>
-          <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-[#173D2E]">
-            Quality Products Delivered by <span className="text-[#9E7E38]">Bazaar Retail</span>
-          </h1>
-          <p className="text-[#173D2E]/80 text-sm sm:text-base max-w-xl mx-auto font-medium">
-            Free shipping across Pakistan on orders over Rs. 5,000. Pay cash upon delivery at your doorstep.
-          </p>
-        </div>
-      </section>
-
-      {/* PRODUCTS SECTION */}
-      <main className="max-w-7xl mx-auto px-4 lg:px-8 mt-8">
-        {/* Categories */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-4 scrollbar-none">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
-                selectedCategory === cat
-                  ? 'bg-[#173D2E] text-[#F5F1E6] font-bold shadow-md'
-                  : 'bg-[#EFEAE0] border border-[#173D2E]/15 text-[#173D2E]/80 hover:bg-[#E5DEC3] hover:text-[#173D2E]'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-24 space-y-4">
-            <Loader2 className="w-10 h-10 text-[#BF9F62] animate-spin" />
-            <p className="text-[#173D2E]/70 text-sm font-medium">Loading Bazaar Retail catalog...</p>
-          </div>
-        ) : filteredProducts.length === 0 ? (
-          <div className="text-center py-20 bg-[#EFEAE0]/60 rounded-3xl border border-[#173D2E]/15 my-8">
-            <ShoppingBag className="w-12 h-12 text-[#173D2E]/40 mx-auto mb-3" />
-            <h3 className="text-lg font-semibold text-[#173D2E]">No products found</h3>
-            <p className="text-[#173D2E]/60 text-sm mt-1">Try adjusting your search or category filter.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-            {filteredProducts.map((product) => (
-              <div
-                key={product.id}
-                className="group bg-[#EFEAE0]/80 rounded-2xl border border-[#173D2E]/15 hover:border-[#BF9F62] overflow-hidden flex flex-col transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+            {/* Navigation Menu Links */}
+            <div className="hidden lg:flex items-center gap-6 text-sm font-semibold text-[#173D2E]">
+              <button
+                onClick={() => navigateTo('home')}
+                className={`hover:text-[#BF9F62] transition-colors ${currentPage === 'home' ? 'text-[#BF9F62] font-bold' : ''}`}
               >
-                <div className="relative aspect-square overflow-hidden bg-[#E5DEC3]">
-                  <img
-                    src={product.image || 'https://via.placeholder.com/400x400?text=No+Image'}
-                    alt={product.name || 'Product'}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                Store
+              </button>
+              <button
+                onClick={() => navigateTo('about')}
+                className={`hover:text-[#BF9F62] transition-colors ${currentPage === 'about' ? 'text-[#BF9F62] font-bold' : ''}`}
+              >
+                About Us
+              </button>
+              <button
+                onClick={() => navigateTo('shipping')}
+                className={`hover:text-[#BF9F62] transition-colors ${currentPage === 'shipping' ? 'text-[#BF9F62] font-bold' : ''}`}
+              >
+                Shipping & Delivery
+              </button>
+              <button
+                onClick={() => navigateTo('returns')}
+                className={`hover:text-[#BF9F62] transition-colors ${currentPage === 'returns' ? 'text-[#BF9F62] font-bold' : ''}`}
+              >
+                Returns Policy
+              </button>
+              <button
+                onClick={() => navigateTo('faq')}
+                className={`hover:text-[#BF9F62] transition-colors ${currentPage === 'faq' ? 'text-[#BF9F62] font-bold' : ''}`}
+              >
+                FAQ
+              </button>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-3">
+              {/* Search input if on home page */}
+              {currentPage === 'home' && (
+                <div className="relative hidden md:block w-64">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#173D2E]/60" />
+                  <input
+                    type="text"
+                    placeholder="Search products..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full bg-[#EFEAE0] border border-[#173D2E]/20 rounded-xl pl-9 pr-4 py-1.5 text-xs text-[#173D2E] placeholder-[#173D2E]/50 focus:outline-none focus:border-[#BF9F62]"
                   />
-                  {product.category && (
-                    <span className="absolute top-3 left-3 bg-[#173D2E] text-[#F5F1E6] text-xs font-semibold px-2.5 py-1 rounded-lg">
-                      {product.category}
-                    </span>
-                  )}
                 </div>
+              )}
 
-                <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                  <div>
-                    <h3 className="font-bold text-[#173D2E] group-hover:text-[#9E7E38] transition-colors line-clamp-1">
-                      {product.name}
-                    </h3>
-                    <p className="text-[#173D2E]/70 text-xs line-clamp-2 mt-1">
-                      {product.description || 'Premium quality guaranteed by Bazaar Retail.'}
-                    </p>
-                  </div>
+              {/* Cart Button */}
+              <button
+                onClick={() => setIsCartOpen(true)}
+                className="relative p-2.5 rounded-xl bg-[#EFEAE0] border border-[#173D2E]/20 hover:bg-[#E5DEC3] text-[#173D2E] transition-all"
+              >
+                <ShoppingCart className="w-5 h-5" />
+                {cart.length > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-[#BF9F62] text-[#173D2E] text-xs font-black w-5 h-5 rounded-full flex items-center justify-center shadow-md animate-pulse">
+                    {cart.reduce((a, c) => a + c.quantity, 0)}
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
+        </nav>
 
-                  <div className="flex items-center justify-between pt-2 border-t border-[#173D2E]/15">
-                    <div>
-                      <span className="text-xs text-[#173D2E]/60 block font-medium">Price</span>
-                      <span className="text-xl font-extrabold text-[#173D2E]">
-                        Rs. {Number(product.price || 0).toLocaleString()}
-                      </span>
-                    </div>
+        {/* PAGE CONTENT ROUTER */}
 
-                    <button
-                      onClick={() => addToCart(product)}
-                      className="bg-[#BF9F62] hover:bg-[#A88A52] text-[#173D2E] font-bold px-4 py-2.5 rounded-xl text-sm transition-all flex items-center gap-2 active:scale-95 shadow-sm"
-                    >
-                      <ShoppingCart className="w-4 h-4" /> Add
-                    </button>
-                  </div>
+        {/* 1. HOME PAGE */}
+        {currentPage === 'home' && (
+          <div>
+            {/* HERO BANNER */}
+            <section className="relative overflow-hidden bg-gradient-to-b from-[#BF9F62]/20 via-[#EFEAE0]/50 to-transparent py-12 px-4 border-b border-[#173D2E]/10">
+              <div className="max-w-4xl mx-auto text-center space-y-4">
+                <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#173D2E]/10 border border-[#173D2E]/20 text-[#173D2E] text-xs font-bold uppercase tracking-widest">
+                  <Sparkles className="w-3.5 h-3.5 text-[#BF9F62]" /> Online Shopping in Pakistan
+                </span>
+                <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-[#173D2E]">
+                  BAZAARRETAIL - Online Shopping in Pakistan with <span className="text-[#9E7E38]">Cash on Delivery</span>
+                </h1>
+                <p className="text-[#173D2E]/80 text-sm sm:text-base max-w-2xl mx-auto font-medium">
+                  Everyday essentials and smart finds, delivered to your door anywhere in Pakistan. Check the product, then pay in cash when it arrives.
+                </p>
+              </div>
+            </section>
+
+            {/* TRUST BAR (4 Icons) */}
+            <section className="bg-[#173D2E] text-[#F5F1E6] py-6 px-4">
+              <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                <div className="flex flex-col items-center space-y-1">
+                  <ShieldCheck className="w-6 h-6 text-[#BF9F62]" />
+                  <span className="font-bold text-xs uppercase tracking-wide">Cash on Delivery</span>
+                </div>
+                <div className="flex flex-col items-center space-y-1">
+                  <Truck className="w-6 h-6 text-[#BF9F62]" />
+                  <span className="font-bold text-xs uppercase tracking-wide">Delivery Across Pakistan</span>
+                </div>
+                <div className="flex flex-col items-center space-y-1">
+                  <RotateCcw className="w-6 h-6 text-[#BF9F62]" />
+                  <span className="font-bold text-xs uppercase tracking-wide">Easy 7-Day Returns</span>
+                </div>
+                <div className="flex flex-col items-center space-y-1">
+                  <MessageCircle className="w-6 h-6 text-[#BF9F62]" />
+                  <span className="font-bold text-xs uppercase tracking-wide">WhatsApp Support</span>
                 </div>
               </div>
-            ))}
+            </section>
+
+            {/* MAIN PRODUCTS AREA */}
+            <main className="max-w-7xl mx-auto px-4 lg:px-8 mt-8">
+              {/* Categories */}
+              <div className="flex items-center gap-2 overflow-x-auto pb-4 scrollbar-none">
+                {categories.map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setSelectedCategory(cat)}
+                    className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
+                      selectedCategory === cat
+                        ? 'bg-[#173D2E] text-[#F5F1E6] font-bold shadow-md'
+                        : 'bg-[#EFEAE0] border border-[#173D2E]/15 text-[#173D2E]/80 hover:bg-[#E5DEC3] hover:text-[#173D2E]'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+
+              {loading ? (
+                <div className="flex flex-col items-center justify-center py-24 space-y-4">
+                  <Loader2 className="w-10 h-10 text-[#BF9F62] animate-spin" />
+                  <p className="text-[#173D2E]/70 text-sm font-medium">Loading Bazaar Retail catalog...</p>
+                </div>
+              ) : filteredProducts.length === 0 ? (
+                <div className="text-center py-20 bg-[#EFEAE0]/60 rounded-3xl border border-[#173D2E]/15 my-8">
+                  <ShoppingBag className="w-12 h-12 text-[#173D2E]/40 mx-auto mb-3" />
+                  <h3 className="text-lg font-semibold text-[#173D2E]">No products found</h3>
+                  <p className="text-[#173D2E]/60 text-sm mt-1">Try adjusting your search or category filter.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+                  {filteredProducts.map((product) => (
+                    <div
+                      key={product.id}
+                      className="group bg-[#EFEAE0]/80 rounded-2xl border border-[#173D2E]/15 hover:border-[#BF9F62] overflow-hidden flex flex-col transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+                    >
+                      <div className="relative aspect-square overflow-hidden bg-[#E5DEC3]">
+                        <img
+                          src={product.image || 'https://via.placeholder.com/400x400?text=No+Image'}
+                          alt={product.name || 'Product'}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                        {product.category && (
+                          <span className="absolute top-3 left-3 bg-[#173D2E] text-[#F5F1E6] text-xs font-semibold px-2.5 py-1 rounded-lg">
+                            {product.category}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                        <div>
+                          <h3 className="font-bold text-[#173D2E] group-hover:text-[#9E7E38] transition-colors line-clamp-1">
+                            {product.name}
+                          </h3>
+                          <p className="text-[#173D2E]/70 text-xs line-clamp-2 mt-1">
+                            {product.description || 'Premium quality guaranteed by Bazaar Retail.'}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-2 border-t border-[#173D2E]/15">
+                          <div>
+                            <span className="text-xs text-[#173D2E]/60 block font-medium">Price</span>
+                            <span className="text-xl font-extrabold text-[#173D2E]">
+                              Rs. {Number(product.price || 0).toLocaleString()}
+                            </span>
+                          </div>
+
+                          <button
+                            onClick={() => addToCart(product)}
+                            className="bg-[#BF9F62] hover:bg-[#A88A52] text-[#173D2E] font-bold px-4 py-2.5 rounded-xl text-sm transition-all flex items-center gap-2 active:scale-95 shadow-sm"
+                          >
+                            <ShoppingCart className="w-4 h-4" /> Add
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* WHY SHOP AT BAZAAR RETAIL SECTION */}
+              <section className="mt-16 py-12 px-6 bg-[#EFEAE0]/80 rounded-3xl border border-[#173D2E]/15 space-y-6">
+                <h2 className="text-2xl font-extrabold text-[#173D2E] text-center">
+                  Why Shop at BAZAARRETAIL?
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 text-sm text-[#173D2E]/80">
+                  <div className="p-4 bg-[#F5F1E6] rounded-2xl border border-[#173D2E]/10">
+                    <h3 className="font-bold text-[#173D2E] text-base mb-1">Pay on Delivery</h3>
+                    <p>Inspect your order and pay cash when it reaches your doorstep.</p>
+                  </div>
+                  <div className="p-4 bg-[#F5F1E6] rounded-2xl border border-[#173D2E]/10">
+                    <h3 className="font-bold text-[#173D2E] text-base mb-1">Nationwide Delivery</h3>
+                    <p>We deliver to Karachi, Lahore, Islamabad, Rawalpindi, Faisalabad and across Pakistan.</p>
+                  </div>
+                  <div className="p-4 bg-[#F5F1E6] rounded-2xl border border-[#173D2E]/10">
+                    <h3 className="font-bold text-[#173D2E] text-base mb-1">Honest Prices</h3>
+                    <p>Clear prices in PKR with no hidden fees at checkout.</p>
+                  </div>
+                  <div className="p-4 bg-[#F5F1E6] rounded-2xl border border-[#173D2E]/10">
+                    <h3 className="font-bold text-[#173D2E] text-base mb-1">Real Support</h3>
+                    <p>Message us on WhatsApp and a real customer service team member replies.</p>
+                  </div>
+                </div>
+              </section>
+
+              {/* HOW IT WORKS SECTION */}
+              <section className="my-12 py-10 px-6 text-center space-y-6">
+                <h2 className="text-2xl font-extrabold text-[#173D2E]">How It Works</h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+                  <div className="space-y-2">
+                    <div className="w-10 h-10 bg-[#173D2E] text-[#BF9F62] rounded-full flex items-center justify-center font-bold text-lg mx-auto">1</div>
+                    <h4 className="font-bold text-[#173D2E]">Choose & Order</h4>
+                    <p className="text-xs text-[#173D2E]/70">Select your favorite item and tap Order Now.</p>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="w-10 h-10 bg-[#173D2E] text-[#BF9F62] rounded-full flex items-center justify-center font-bold text-lg mx-auto">2</div>
+                    <h4 className="font-bold text-[#173D2E]">Address Confirmation</h4>
+                    <p className="text-xs text-[#173D2E]/70">Enter details. We confirm your parcel via call or WhatsApp.</p>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="w-10 h-10 bg-[#173D2E] text-[#BF9F62] rounded-full flex items-center justify-center font-bold text-lg mx-auto">3</div>
+                    <h4 className="font-bold text-[#173D2E]">Receive & Pay</h4>
+                    <p className="text-xs text-[#173D2E]/70">Receive your parcel at your doorstep and pay Cash on Delivery.</p>
+                  </div>
+                </div>
+              </section>
+            </main>
           </div>
         )}
-      </main>
+
+        {/* 2. ABOUT US PAGE */}
+        {currentPage === 'about' && (
+          <div className="max-w-4xl mx-auto px-4 py-12 space-y-8">
+            <div className="border-b border-[#173D2E]/15 pb-6">
+              <span className="text-xs font-bold text-[#BF9F62] uppercase tracking-wider">About BAZAARRETAIL</span>
+              <h1 className="text-3xl sm:text-4xl font-extrabold text-[#173D2E] mt-1">Simple, Honest & Safe Shopping in Pakistan</h1>
+            </div>
+
+            <div className="space-y-6 text-[#173D2E]/80 leading-relaxed text-sm sm:text-base">
+              <p>
+                <strong>BAZAARRETAIL</strong> is a Pakistan-based online store built around one core idea: shopping online should be simple, honest, and completely safe. We bring useful everyday products from trusted suppliers directly to your doorstep, and you pay only when you receive your order.
+              </p>
+
+              <h3 className="text-xl font-bold text-[#173D2E] pt-2">What We Sell</h3>
+              <p>
+                We focus on practical categories designed for modern Pakistani homes: kitchen tools & gadgets, grooming and personal care, mobile and car accessories, kids' educational items, home decor, and fitness essentials. Each product is carefully chosen for usefulness, fair pricing, and daily reliability.
+              </p>
+
+              <h3 className="text-xl font-bold text-[#173D2E] pt-2">Our Promise</h3>
+              <ul className="list-disc pl-5 space-y-2">
+                <li>Clear product information and honest item descriptions.</li>
+                <li>Reliable Cash on Delivery across Karachi, Lahore, Islamabad, and all major Pakistani cities.</li>
+                <li>Fast, friendly support directly on WhatsApp.</li>
+                <li>A straightforward, hassle-free 7-day return process if an item arrives damaged or incorrect.</li>
+              </ul>
+            </div>
+          </div>
+        )}
+
+        {/* 3. SHIPPING & DELIVERY PAGE */}
+        {currentPage === 'shipping' && (
+          <div className="max-w-4xl mx-auto px-4 py-12 space-y-8">
+            <div className="border-b border-[#173D2E]/15 pb-6">
+              <span className="text-xs font-bold text-[#BF9F62] uppercase tracking-wider">Policy</span>
+              <h1 className="text-3xl sm:text-4xl font-extrabold text-[#173D2E] mt-1">Shipping & Delivery Policy</h1>
+            </div>
+
+            <div className="space-y-6 text-[#173D2E]/80 text-sm sm:text-base">
+              <div>
+                <h3 className="font-bold text-[#173D2E] text-lg mb-1">Where We Deliver</h3>
+                <p>We deliver nationwide across Pakistan, including Karachi, Lahore, Islamabad, Rawalpindi, Faisalabad, Multan, Peshawar, Quetta, and most regional towns.</p>
+              </div>
+
+              <div>
+                <h3 className="font-bold text-[#173D2E] text-lg mb-1">Processing & Order Confirmation</h3>
+                <p>To prevent fake or mistaken orders, every order is confirmed by phone call or WhatsApp before dispatch. Dispatches take place within 1 to 2 working days after confirmation.</p>
+              </div>
+
+              <div>
+                <h3 className="font-bold text-[#173D2E] text-lg mb-1">Delivery Time & Charges</h3>
+                <p>Standard delivery takes <strong>3 to 7 working days</strong> across Pakistan. Delivery is Rs. 250 per order, and <strong>FREE</strong> for orders above Rs. 5,000.</p>
+              </div>
+
+              <div>
+                <h3 className="font-bold text-[#173D2E] text-lg mb-1">Cash on Delivery (COD)</h3>
+                <p>Pay cash to the courier representative when your parcel arrives. Please keep the exact payable amount ready upon delivery.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 4. RETURNS & REFUNDS PAGE */}
+        {currentPage === 'returns' && (
+          <div className="max-w-4xl mx-auto px-4 py-12 space-y-8">
+            <div className="border-b border-[#173D2E]/15 pb-6">
+              <span className="text-xs font-bold text-[#BF9F62] uppercase tracking-wider">Guarantee</span>
+              <h1 className="text-3xl sm:text-4xl font-extrabold text-[#173D2E] mt-1">Returns & Refund Policy</h1>
+            </div>
+
+            <div className="space-y-6 text-[#173D2E]/80 text-sm sm:text-base">
+              <div className="p-4 bg-[#EFEAE0] rounded-2xl border border-[#173D2E]/15 font-semibold text-[#173D2E]">
+                Return Window: You can request a return within 7 days of receiving your order.
+              </div>
+
+              <div>
+                <h3 className="font-bold text-[#173D2E] text-lg mb-2">Eligible Conditions for Return</h3>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>Item arrived damaged, broken, or defective.</li>
+                  <li>You received the wrong product.</li>
+                  <li>The item is significantly different from description.</li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="font-bold text-[#173D2E] text-lg mb-2">Unboxing Video Recommendation</h3>
+                <p>We strongly recommend recording a quick unboxing video when opening your parcel. This helps us resolve damage or missing component claims instantly.</p>
+              </div>
+
+              <div>
+                <h3 className="font-bold text-[#173D2E] text-lg mb-2">How to Request a Return</h3>
+                <p>Message our support team on WhatsApp with your order number and photos/video of the issue within 7 days. Once verified, we will issue a replacement or refund via JazzCash, EasyPaisa, or Bank Transfer within 5 to 7 working days.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 5. FAQ PAGE */}
+        {currentPage === 'faq' && (
+          <div className="max-w-4xl mx-auto px-4 py-12 space-y-8">
+            <div className="border-b border-[#173D2E]/15 pb-6">
+              <span className="text-xs font-bold text-[#BF9F62] uppercase tracking-wider">Help Center</span>
+              <h1 className="text-3xl sm:text-4xl font-extrabold text-[#173D2E] mt-1">Frequently Asked Questions</h1>
+            </div>
+
+            <div className="space-y-4">
+              <div className="p-5 bg-[#EFEAE0]/80 rounded-2xl border border-[#173D2E]/15">
+                <h3 className="font-bold text-[#173D2E] text-base mb-1">Do you offer Cash on Delivery across Pakistan?</h3>
+                <p className="text-xs sm:text-sm text-[#173D2E]/80">Yes! You pay cash to the courier representative when your parcel is delivered to your house.</p>
+              </div>
+
+              <div className="p-5 bg-[#EFEAE0]/80 rounded-2xl border border-[#173D2E]/15">
+                <h3 className="font-bold text-[#173D2E] text-base mb-1">How long does delivery take?</h3>
+                <p className="text-xs sm:text-sm text-[#173D2E]/80">Delivery typically takes 3 to 7 working days after phone or WhatsApp confirmation.</p>
+              </div>
+
+              <div className="p-5 bg-[#EFEAE0]/80 rounded-2xl border border-[#173D2E]/15">
+                <h3 className="font-bold text-[#173D2E] text-base mb-1">Why do you call or message to confirm orders?</h3>
+                <p className="text-xs sm:text-sm text-[#173D2E]/80">Order confirmation helps verify your exact address and prevents fake or accidental orders.</p>
+              </div>
+
+              <div className="p-5 bg-[#EFEAE0]/80 rounded-2xl border border-[#173D2E]/15">
+                <h3 className="font-bold text-[#173D2E] text-base mb-1">What if my item arrives damaged?</h3>
+                <p className="text-xs sm:text-sm text-[#173D2E]/80">Contact us on WhatsApp within 7 days with pictures/video, and we will send a free replacement.</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* FOOTER */}
+      <footer className="bg-[#173D2E] text-[#F5F1E6] pt-12 pb-8 border-t border-[#BF9F62]/20 mt-20">
+        <div className="max-w-7xl mx-auto px-4 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-8 mb-10 text-sm">
+          {/* Brand Info */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-[#BF9F62] text-[#173D2E] flex items-center justify-center font-bold">BR</div>
+              <span className="font-black text-lg text-[#F5F1E6]">BAZAAR RETAIL</span>
+            </div>
+            <p className="text-[#F5F1E6]/70 text-xs">
+              Everyday essentials & smart finds delivered nationwide across Pakistan with Cash on Delivery.
+            </p>
+          </div>
+
+          {/* Quick Links */}
+          <div>
+            <h4 className="font-bold text-[#BF9F62] mb-3 text-xs uppercase tracking-wider">Quick Navigation</h4>
+            <ul className="space-y-2 text-xs text-[#F5F1E6]/80">
+              <li><button onClick={() => navigateTo('home')} className="hover:text-[#BF9F62]">Home Store</button></li>
+              <li><button onClick={() => navigateTo('about')} className="hover:text-[#BF9F62]">About Us</button></li>
+              <li><button onClick={() => navigateTo('shipping')} className="hover:text-[#BF9F62]">Shipping & Delivery</button></li>
+              <li><button onClick={() => navigateTo('returns')} className="hover:text-[#BF9F62]">Returns & Refunds</button></li>
+            </ul>
+          </div>
+
+          {/* Customer Service */}
+          <div>
+            <h4 className="font-bold text-[#BF9F62] mb-3 text-xs uppercase tracking-wider">Customer Support</h4>
+            <ul className="space-y-2 text-xs text-[#F5F1E6]/80">
+              <li><button onClick={() => navigateTo('faq')} className="hover:text-[#BF9F62]">Frequently Asked Questions</button></li>
+              <li><span>Cash on Delivery Available</span></li>
+              <li><span>3-7 Days Delivery Across Pakistan</span></li>
+            </ul>
+          </div>
+
+          {/* Trust Badge */}
+          <div className="space-y-2">
+            <h4 className="font-bold text-[#BF9F62] mb-3 text-xs uppercase tracking-wider">Shopping Guarantee</h4>
+            <p className="text-xs text-[#F5F1E6]/70">
+              Check your parcel upon delivery. 100% genuine Pakistani dropshipping store.
+            </p>
+          </div>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 lg:px-8 pt-6 border-t border-[#F5F1E6]/10 flex flex-col sm:flex-row items-center justify-between text-xs text-[#F5F1E6]/50 gap-4">
+          <p>© 2026 BAZAAR RETAIL Pakistan. All Rights Reserved.</p>
+          <div className="flex gap-4">
+            <button onClick={() => navigateTo('shipping')} className="hover:text-[#F5F1E6]">Shipping</button>
+            <button onClick={() => navigateTo('returns')} className="hover:text-[#F5F1E6]">Returns</button>
+            <button onClick={() => navigateTo('faq')} className="hover:text-[#F5F1E6]">FAQ</button>
+          </div>
+        </div>
+      </footer>
 
       {/* CART DRAWER */}
       {isCartOpen && (
