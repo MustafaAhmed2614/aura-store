@@ -486,7 +486,7 @@ export default function App() {
 
               <div>
                 <h3 className="font-bold text-[#173D2E] text-lg mb-1">Delivery Time & Charges</h3>
-                <p>Standard delivery takes <strong>3 to 7 working days</strong> across Pakistan. Delivery is Rs. 250 per order, and <strong>FREE</strong> for orders above Rs. 5,000.</p>
+                <p>Standard delivery takes <strong>3 to 7 working days</strong> across Pakistan. Delivery is Rs. 250 per order.</p>
               </div>
 
               <div>
