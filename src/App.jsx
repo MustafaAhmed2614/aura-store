@@ -16,7 +16,9 @@ import {
   Truck,
   RotateCcw,
   ShieldCheck,
-  MessageCircle
+  MessageCircle,
+  Mail,
+  Menu
 } from 'lucide-react';
 
 // Supabase Client Setup
@@ -37,8 +39,15 @@ export default function App() {
   const [orderSubmitted, setOrderSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Active Page Navigation State ('home', 'about', 'shipping', 'returns', 'faq', 'contact')
+  // Active Page Navigation State ('home', 'about', 'shipping', 'returns', 'faq')
   const [currentPage, setCurrentPage] = useState('home');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Newsletter Pop-up States
+  const [isNewsletterOpen, setIsNewsletterOpen] = useState(false);
+  const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [newsletterSubmitted, setNewsletterSubmitted] = useState(false);
+  const [isSubmittingNewsletter, setIsSubmittingNewsletter] = useState(false);
 
   // Checkout Form State
   const [formData, setFormData] = useState({
@@ -48,7 +57,7 @@ export default function App() {
     address: ''
   });
 
-  // Async Product Fetch
+  // Async Product Fetch & Newsletter Trigger
   useEffect(() => {
     let isMounted = true;
 
@@ -81,15 +90,59 @@ export default function App() {
 
     loadProducts();
 
+    // Trigger Newsletter Popup after 1.5 seconds if not already subscribed/dismissed
+    const timer = setTimeout(() => {
+      if (isMounted) {
+        const dismissed = sessionStorage.getItem('newsletter_dismissed');
+        if (!dismissed) {
+          setIsNewsletterOpen(true);
+        }
+      }
+    }, 1500);
+
     return () => {
       isMounted = false;
+      clearTimeout(timer);
     };
   }, []);
 
   // Helper to change pages and scroll to top
   const navigateTo = (pageName) => {
     setCurrentPage(pageName);
+    setIsMobileMenuOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Close Newsletter Modal
+  const closeNewsletter = () => {
+    setIsNewsletterOpen(false);
+    sessionStorage.setItem('newsletter_dismissed', 'true');
+  };
+
+  // Handle Newsletter Subscription
+  const handleNewsletterSubmit = async (e) => {
+    e.preventDefault();
+    if (!newsletterEmail) return;
+
+    setIsSubmittingNewsletter(true);
+    try {
+      if (supabase) {
+        await supabase.from('subscribers').insert([{ email: newsletterEmail }]);
+      }
+      setNewsletterSubmitted(true);
+      sessionStorage.setItem('newsletter_dismissed', 'true');
+      setTimeout(() => {
+        setIsNewsletterOpen(false);
+      }, 2000);
+    } catch (err) {
+      console.error('Newsletter error:', err);
+      setNewsletterSubmitted(true);
+      setTimeout(() => {
+        setIsNewsletterOpen(false);
+      }, 2000);
+    } finally {
+      setIsSubmittingNewsletter(false);
+    }
   };
 
   // Cart Functions
@@ -181,61 +234,70 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#F5F1E6] text-[#173D2E] font-sans flex flex-col justify-between">
       <div>
-        {/* NAVBAR */}
+        {/* NAVBAR HEADER */}
         <nav className="sticky top-0 z-40 bg-[#F5F1E6]/95 backdrop-blur-md border-b border-[#173D2E]/15 px-4 lg:px-8 py-3.5 shadow-sm">
           <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-            {/* Logo */}
-            <div
-              className="flex items-center gap-3 cursor-pointer"
-              onClick={() => navigateTo('home')}
-            >
-              <div className="w-10 h-10 rounded-xl bg-[#173D2E] flex items-center justify-center shadow-md">
-                <span className="font-extrabold text-[#BF9F62] tracking-tight text-lg">BR</span>
+            
+            {/* Mobile Menu Toggle & Logo */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="lg:hidden p-2 rounded-xl bg-[#EFEAE0] text-[#173D2E] hover:bg-[#E5DEC3]"
+              >
+                <Menu className="w-5 h-5" />
+              </button>
+
+              <div
+                className="flex items-center gap-2.5 cursor-pointer"
+                onClick={() => navigateTo('home')}
+              >
+                <div className="w-10 h-10 rounded-xl bg-[#173D2E] flex items-center justify-center shadow-md">
+                  <span className="font-extrabold text-[#BF9F62] tracking-tight text-lg">BR</span>
+                </div>
+                <span className="text-xl font-black text-[#173D2E] tracking-wider">
+                  BAZAAR RETAIL
+                </span>
               </div>
-              <span className="text-xl font-black text-[#173D2E] tracking-wider">
-                BAZAAR RETAIL
-              </span>
             </div>
 
-            {/* Navigation Menu Links */}
+            {/* Desktop Navigation Links */}
             <div className="hidden lg:flex items-center gap-6 text-sm font-semibold text-[#173D2E]">
               <button
                 onClick={() => navigateTo('home')}
-                className={`hover:text-[#BF9F62] transition-colors ${currentPage === 'home' ? 'text-[#BF9F62] font-bold' : ''}`}
+                className={`hover:text-[#BF9F62] transition-colors ${currentPage === 'home' ? 'text-[#BF9F62] font-extrabold border-b-2 border-[#BF9F62]' : ''}`}
               >
                 Store
               </button>
               <button
                 onClick={() => navigateTo('about')}
-                className={`hover:text-[#BF9F62] transition-colors ${currentPage === 'about' ? 'text-[#BF9F62] font-bold' : ''}`}
+                className={`hover:text-[#BF9F62] transition-colors ${currentPage === 'about' ? 'text-[#BF9F62] font-extrabold border-b-2 border-[#BF9F62]' : ''}`}
               >
                 About Us
               </button>
               <button
                 onClick={() => navigateTo('shipping')}
-                className={`hover:text-[#BF9F62] transition-colors ${currentPage === 'shipping' ? 'text-[#BF9F62] font-bold' : ''}`}
+                className={`hover:text-[#BF9F62] transition-colors ${currentPage === 'shipping' ? 'text-[#BF9F62] font-extrabold border-b-2 border-[#BF9F62]' : ''}`}
               >
                 Shipping & Delivery
               </button>
               <button
                 onClick={() => navigateTo('returns')}
-                className={`hover:text-[#BF9F62] transition-colors ${currentPage === 'returns' ? 'text-[#BF9F62] font-bold' : ''}`}
+                className={`hover:text-[#BF9F62] transition-colors ${currentPage === 'returns' ? 'text-[#BF9F62] font-extrabold border-b-2 border-[#BF9F62]' : ''}`}
               >
                 Returns Policy
               </button>
               <button
                 onClick={() => navigateTo('faq')}
-                className={`hover:text-[#BF9F62] transition-colors ${currentPage === 'faq' ? 'text-[#BF9F62] font-bold' : ''}`}
+                className={`hover:text-[#BF9F62] transition-colors ${currentPage === 'faq' ? 'text-[#BF9F62] font-extrabold border-b-2 border-[#BF9F62]' : ''}`}
               >
                 FAQ
               </button>
             </div>
 
-            {/* Actions */}
+            {/* Actions: Search & Cart Button */}
             <div className="flex items-center gap-3">
-              {/* Search input if on home page */}
               {currentPage === 'home' && (
-                <div className="relative hidden md:block w-64">
+                <div className="relative hidden md:block w-60">
                   <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#173D2E]/60" />
                   <input
                     type="text"
@@ -247,7 +309,6 @@ export default function App() {
                 </div>
               )}
 
-              {/* Cart Button */}
               <button
                 onClick={() => setIsCartOpen(true)}
                 className="relative p-2.5 rounded-xl bg-[#EFEAE0] border border-[#173D2E]/20 hover:bg-[#E5DEC3] text-[#173D2E] transition-all"
@@ -261,6 +322,42 @@ export default function App() {
               </button>
             </div>
           </div>
+
+          {/* Mobile Drawer Menu */}
+          {isMobileMenuOpen && (
+            <div className="lg:hidden mt-3 pt-3 border-t border-[#173D2E]/15 flex flex-col space-y-2 text-sm font-semibold text-[#173D2E]">
+              <button
+                onClick={() => navigateTo('home')}
+                className="text-left px-3 py-2 rounded-lg hover:bg-[#EFEAE0]"
+              >
+                Store / All Products
+              </button>
+              <button
+                onClick={() => navigateTo('about')}
+                className="text-left px-3 py-2 rounded-lg hover:bg-[#EFEAE0]"
+              >
+                About Us
+              </button>
+              <button
+                onClick={() => navigateTo('shipping')}
+                className="text-left px-3 py-2 rounded-lg hover:bg-[#EFEAE0]"
+              >
+                Shipping & Delivery
+              </button>
+              <button
+                onClick={() => navigateTo('returns')}
+                className="text-left px-3 py-2 rounded-lg hover:bg-[#EFEAE0]"
+              >
+                Returns Policy
+              </button>
+              <button
+                onClick={() => navigateTo('faq')}
+                className="text-left px-3 py-2 rounded-lg hover:bg-[#EFEAE0]"
+              >
+                FAQ & Support
+              </button>
+            </div>
+          )}
         </nav>
 
         {/* PAGE CONTENT ROUTER */}
@@ -568,7 +665,6 @@ export default function App() {
       {/* FOOTER */}
       <footer className="bg-[#173D2E] text-[#F5F1E6] pt-12 pb-8 border-t border-[#BF9F62]/20 mt-20">
         <div className="max-w-7xl mx-auto px-4 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-8 mb-10 text-sm">
-          {/* Brand Info */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg bg-[#BF9F62] text-[#173D2E] flex items-center justify-center font-bold">BR</div>
@@ -579,7 +675,6 @@ export default function App() {
             </p>
           </div>
 
-          {/* Quick Links */}
           <div>
             <h4 className="font-bold text-[#BF9F62] mb-3 text-xs uppercase tracking-wider">Quick Navigation</h4>
             <ul className="space-y-2 text-xs text-[#F5F1E6]/80">
@@ -590,7 +685,6 @@ export default function App() {
             </ul>
           </div>
 
-          {/* Customer Service */}
           <div>
             <h4 className="font-bold text-[#BF9F62] mb-3 text-xs uppercase tracking-wider">Customer Support</h4>
             <ul className="space-y-2 text-xs text-[#F5F1E6]/80">
@@ -600,7 +694,6 @@ export default function App() {
             </ul>
           </div>
 
-          {/* Trust Badge */}
           <div className="space-y-2">
             <h4 className="font-bold text-[#BF9F62] mb-3 text-xs uppercase tracking-wider">Shopping Guarantee</h4>
             <p className="text-xs text-[#F5F1E6]/70">
@@ -618,6 +711,81 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      {/* EMAIL NEWSLETTER POPUP MODAL */}
+      {isNewsletterOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-[#F5F1E6] border border-[#173D2E]/20 rounded-3xl w-full max-w-md p-6 sm:p-8 relative shadow-2xl">
+            <button
+              onClick={closeNewsletter}
+              className="absolute top-4 right-4 p-1 rounded-lg text-[#173D2E]/60 hover:text-[#173D2E]"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {newsletterSubmitted ? (
+              <div className="text-center py-6 space-y-3">
+                <div className="w-14 h-14 bg-[#173D2E] text-[#BF9F62] rounded-full flex items-center justify-center mx-auto">
+                  <CheckCircle2 className="w-8 h-8" />
+                </div>
+                <h3 className="text-xl font-extrabold text-[#173D2E]">You're Subscribed!</h3>
+                <p className="text-xs text-[#173D2E]/70 max-w-xs mx-auto">
+                  Thank you for joining Bazaar Retail. You will be the first to receive exclusive discounts & sales updates!
+                </p>
+              </div>
+            ) : (
+              <form onSubmit={handleNewsletterSubmit} className="space-y-4 text-center">
+                <div className="w-12 h-12 bg-[#BF9F62]/20 border border-[#BF9F62]/40 text-[#173D2E] rounded-2xl flex items-center justify-center mx-auto mb-2">
+                  <Mail className="w-6 h-6 text-[#173D2E]" />
+                </div>
+
+                <div>
+                  <span className="text-[10px] font-bold text-[#BF9F62] uppercase tracking-widest bg-[#173D2E] px-2.5 py-0.5 rounded-full">
+                    Exclusive Deals
+                  </span>
+                  <h3 className="text-2xl font-black text-[#173D2E] mt-2">Get Special Offers!</h3>
+                  <p className="text-xs text-[#173D2E]/75 mt-1">
+                    Subscribe to our newsletter for exclusive Pakistani sales, new arrivals, and discount codes.
+                  </p>
+                </div>
+
+                <div className="space-y-3 pt-2">
+                  <input
+                    type="email"
+                    required
+                    placeholder="Enter your email address..."
+                    value={newsletterEmail}
+                    onChange={(e) => setNewsletterEmail(e.target.value)}
+                    className="w-full bg-[#EFEAE0] border border-[#173D2E]/20 rounded-xl px-4 py-3 text-sm text-[#173D2E] placeholder-[#173D2E]/50 focus:outline-none focus:border-[#BF9F62]"
+                  />
+
+                  <button
+                    type="submit"
+                    disabled={isSubmittingNewsletter}
+                    className="w-full bg-[#173D2E] hover:bg-[#235843] text-[#F5F1E6] font-bold py-3 rounded-xl text-sm transition-all shadow-md flex items-center justify-center gap-2"
+                  >
+                    {isSubmittingNewsletter ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" /> Subscribing...
+                      </>
+                    ) : (
+                      'Subscribe Now'
+                    )}
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={closeNewsletter}
+                  className="text-xs text-[#173D2E]/50 hover:underline pt-2 block mx-auto"
+                >
+                  Skip for now
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* CART DRAWER */}
       {isCartOpen && (
