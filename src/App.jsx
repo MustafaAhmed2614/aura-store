@@ -76,32 +76,122 @@ export default function App() {
     tracking: "Order confirm hote hi hum phone/WhatsApp par tracking link provide karte hain taakay aap courier status dekh sakein."
   };
 
-  // Async Product Fetch & Newsletter Trigger
+  // Async Product Fetch & Newsletter Trigger (FILTERED FOR WISHLIST PRODUCTS ONLY)
   useEffect(() => {
     let isMounted = true;
 
     const loadProducts = async () => {
-      if (!supabase) {
-        console.warn('Supabase credentials missing. Check Vercel Environment Variables.');
-        if (isMounted) setLoading(false);
-        return;
-      }
-
       try {
-        const { data, error } = await supabase
-          .from('products')
-          .select('*')
-          .order('created_at', { ascending: false });
+        const hhcApiUrl = import.meta.env.VITE_HHC_API_URL || 'https://api.hhcdropshipping.com/api/dropshipper/open/products';
+        const hhcApiKey = import.meta.env.VITE_HHC_API_KEY;
+
+        const headers = {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        };
+
+        if (hhcApiKey) {
+          headers['app-key'] = hhcApiKey;
+          headers['Authorization'] = `Bearer ${hhcApiKey}`;
+        }
+
+        const response = await fetch(hhcApiUrl, {
+          method: 'GET',
+          headers: headers
+        });
+
+        if (!response.ok) {
+          throw new Error(`HHC API Error: ${response.status}`);
+        }
+
+        const hhcData = await response.json();
+        const productsList = hhcData.data || hhcData || [];
+
+        // Universal Image Extractor Function for HHC Schema
+        const extractImage = (item) => {
+          if (!item) return '';
+
+          const directKeys = [item.featured_image, item.main_image, item.image, item.image_url, item.thumbnail, item.photo];
+          for (const img of directKeys) {
+            if (typeof img === 'string' && img.trim().startsWith('http')) {
+              return img.trim();
+            }
+          }
+
+          const arrayKeys = [item.product_images, item.photos, item.images, item.media];
+          for (const arr of arrayKeys) {
+            if (Array.isArray(arr) && arr.length > 0) {
+              const first = arr[0];
+              if (typeof first === 'string' && first.trim().startsWith('http')) {
+                return first.trim();
+              }
+              if (typeof first === 'object' && first !== null) {
+                const u = first.url || first.image_url || first.path || first.src || first.link || first.image;
+                if (typeof u === 'string' && u.trim().startsWith('http')) {
+                  return u.trim();
+                }
+              }
+            }
+          }
+
+          for (const key in item) {
+            const val = item[key];
+            if (typeof val === 'string' && (val.includes('http://') || val.includes('https://'))) {
+              if (val.includes('.jpg') || val.includes('.png') || val.includes('.webp') || val.includes('.jpeg')) {
+                return val.trim();
+              }
+            }
+          }
+
+          return '';
+        };
+
+        // Format products array for UI
+        const formattedProducts = productsList.map((item) => {
+          const cleanDescription = item.description 
+            ? item.description.replace(/<[^>]*>?/gm, '') 
+            : 'Premium quality guaranteed by Bazaar Retail.';
+
+          const imageUrl = extractImage(item) || 'https://via.placeholder.com/400x400?text=No+Image';
+
+          return {
+            id: item.id,
+            name: item.name || item.title || 'Product',
+            price: item.salePrice || item.wholesalePrice || item.price || 0,
+            image: imageUrl,
+            category: item.category_name || item.category || 'General',
+            description: cleanDescription,
+          };
+        });
+
+        // WISHLIST FILTER: Aapki wishlist ke specific products (Name/Keywords)
+        // Agar aap mazeed products add karein toh unke naam yahan array mein daal dein
+        const wishlistKeywords = ['rvdu', 'ip67', 'visual ear', 'massage gel'];
+        
+        const wishlistOnly = formattedProducts.filter(p => 
+          wishlistKeywords.some(keyword => p.name.toLowerCase().includes(keyword))
+        );
+
+        // Agar filter match milta hai toh sirf wishlist dikhayein, warna fallback catalog
+        const finalProducts = wishlistOnly.length > 0 ? wishlistOnly : formattedProducts;
 
         if (isMounted) {
-          if (error) {
-            console.error('Error fetching products:', error.message);
-          } else if (data) {
+          setProducts(finalProducts);
+        }
+      } catch (err) {
+        if (isMounted) console.error('HHC Fetch Error:', err);
+        
+        // Fallback: Supabase loading if HHC fails
+        if (supabase) {
+          const { data, error } = await supabase
+            .from('products')
+            .select('*')
+            .order('created_at', { ascending: false });
+            
+          if (isMounted && !error && data) {
             setProducts(data);
           }
         }
-      } catch (err) {
-        if (isMounted) console.error('Fetch error:', err);
       } finally {
         if (isMounted) setLoading(false);
       }
