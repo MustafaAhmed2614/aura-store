@@ -37,6 +37,7 @@ export default function App() {
   // 2. STATE MANAGEMENT
   // ==========================================
   const [products, setProducts] = useState([]);
+  const [visibleCount, setVisibleCount] = useState(24);
   const [cities, setCities] = useState([]); // HHC Serviceable Cities
   const [businessProfileId, setBusinessProfileId] = useState(null); // Required for Orders
   const [loading, setLoading] = useState(true);
@@ -130,11 +131,40 @@ export default function App() {
         } catch (e) { console.error('Failed to fetch cities:', e); }
 
         // C. FETCH PRODUCTS
-        const productsRes = await fetch(`${baseUrl}/dropshipper/open/products?paginate=100`, { headers });
-        if (!productsRes.ok) throw new Error(`HHC Products API Error: ${productsRes.status}`);
         
-        const productsData = await productsRes.json();
-        const productsList = productsData.data || [];
+// FETCH ALL PRODUCTS USING PAGINATION
+
+// FETCH PRODUCTS
+const productsRes = await fetch(
+  `${baseUrl}/dropshipper/open/products?paginate=100`,
+  { headers }
+);
+
+if (!productsRes.ok) {
+  throw new Error(`HHC Products API Error: ${productsRes.status}`);
+}
+
+const productsData = await productsRes.json();
+const allProducts = productsData.data || [];
+
+console.log("Total fetched:", allProducts.length);
+
+// ONLY AVAILABLE PRODUCTS
+const productsList = allProducts.filter(item =>
+  Number(item.quantity) > 0 &&
+  Number(item.stockStatus) === 1 &&
+  String(item.product_status).toLowerCase() === "publish"
+);
+
+console.log("Available Products:", productsList.length);
+
+
+console.log("Total fetched:", allProducts.length);
+
+// ONLY AVAILABLE PRODUCTS
+
+
+console.log("Available Products:", productsList.length);
 
         // Universal Image Extractor
         const extractImage = (item) => {
@@ -192,12 +222,17 @@ const excludedProductIds = [
   3771851,
   3771885,
   3771871,
+  3771721,
   // Yahan un products ki IDs add karo jinhein hide karna hai
 ];
 
 const finalProducts = formattedProducts.filter(
   product => !excludedProductIds.includes(Number(product.id))
+  
 );
+
+console.log("API Products:", productsList.length);
+console.log("Website Products:", finalProducts.length);
 
         if (isMounted) {
           setProducts(finalProducts);
@@ -224,6 +259,8 @@ const finalProducts = formattedProducts.filter(
 
     return () => { isMounted = false; clearTimeout(timer); };
   }, []);
+
+
 
   // ==========================================
   // 4. HANDLERS
@@ -386,6 +423,8 @@ const finalProducts = formattedProducts.filter(
     return matchesCat && matchesSearch;
   });
 
+  const visibleProducts = filteredProducts.slice(0, visibleCount);
+
   // ==========================================
   // 5. MAIN UI RENDER
   // ==========================================
@@ -433,7 +472,12 @@ const finalProducts = formattedProducts.filter(
                     type="text"
                     placeholder="Search products..."
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={(e) => {
+  setSearchTerm(e.target.value);
+  setVisibleCount(24);
+}}
+                    
+                    
                     className="w-full bg-[#EFEAE0] border border-[#173D2E]/20 rounded-xl pl-9 pr-4 py-1.5 text-xs text-[#173D2E] placeholder-[#173D2E]/50 focus:outline-none focus:border-[#BF9F62]"
                   />
                 </div>
@@ -515,7 +559,7 @@ const finalProducts = formattedProducts.filter(
                   <Loader2 className="w-10 h-10 text-[#BF9F62] animate-spin" />
                   <p className="text-[#173D2E]/70 text-sm font-medium">Loading Bazaar Retail catalog...</p>
                 </div>
-              ) : filteredProducts.length === 0 ? (
+              ) : visibleProducts.length === 0 ? (
                 <div className="text-center py-20 bg-[#EFEAE0]/60 rounded-3xl border border-[#173D2E]/15 my-8">
                   <ShoppingBag className="w-12 h-12 text-[#173D2E]/40 mx-auto mb-3" />
                   <h3 className="text-lg font-semibold text-[#173D2E]">No products found</h3>
@@ -523,7 +567,7 @@ const finalProducts = formattedProducts.filter(
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-                  {filteredProducts.map((product) => (
+                  {visibleProducts.map((product) => (
                     <div
                       key={product.id}
                       className="group bg-[#EFEAE0]/80 rounded-2xl border border-[#173D2E]/15 hover:border-[#BF9F62] overflow-hidden flex flex-col transition-all duration-300 hover:-translate-y-1 hover:shadow-xl cursor-pointer"
@@ -579,7 +623,24 @@ const finalProducts = formattedProducts.filter(
                     </div>
                   ))}
                 </div>
+                
               )}
+
+{visibleCount < filteredProducts.length && (
+  <div className="flex flex-col items-center py-10 gap-3">
+    <p className="text-sm text-[#173D2E]/70">
+      Showing {visibleProducts.length} of {filteredProducts.length} products
+    </p>
+
+    <button
+      onClick={() => setVisibleCount(prev => prev + 24)}
+      className="bg-[#173D2E] hover:bg-[#235843] text-[#F5F1E6] font-bold px-8 py-3 rounded-xl shadow-md transition-all"
+    >
+      Load More Products
+    </button>
+  </div>
+)}
+
 
               {/* WHY SHOP SECTION */}
               <section className="mt-16 py-12 px-6 bg-[#EFEAE0]/80 rounded-3xl border border-[#173D2E]/15 space-y-6">
