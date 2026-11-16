@@ -170,7 +170,7 @@ export default function App() {
           // Pricing Strategy: Custom Price pehle check hogi, warna Wholesale Cost + Rs. 300 Profit
           const finalPrice = customPrices[item.id] !== undefined 
             ? customPrices[item.id] 
-            : (wholesaleCost > 0 ? wholesaleCost + 300 : 999);
+            : (wholesaleCost > 0 ? wholesaleCost + 1000 : 999);
 
           const categoryName = customCategories[item.id] || (item.categories && item.categories.length > 0 ? item.categories[0].name : 'General');
 
@@ -187,12 +187,17 @@ export default function App() {
         });
 
         // WISHLIST FILTERING (Restored your specific products filter)
-        const wishlistKeywords = ['rvdu', 'ip67', 'visual ear', 'massage gel'];
-        const wishlistOnly = formattedProducts.filter(p => 
-          wishlistKeywords.some(keyword => p.name.toLowerCase().includes(keyword))
-        );
+        // HIDE SELECTED PRODUCTS
+const excludedProductIds = [
+  3771851,
+  3771885,
+  3771871,
+  // Yahan un products ki IDs add karo jinhein hide karna hai
+];
 
-        const finalProducts = wishlistOnly.length > 0 ? wishlistOnly : formattedProducts;
+const finalProducts = formattedProducts.filter(
+  product => !excludedProductIds.includes(Number(product.id))
+);
 
         if (isMounted) {
           setProducts(finalProducts);
