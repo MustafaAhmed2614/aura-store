@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import {
   ShoppingCart,
@@ -39,7 +39,7 @@ export default function App() {
   const [products, setProducts] = useState([]);
   const [visibleCount, setVisibleCount] = useState(24);
   const [cities, setCities] = useState([]); // HHC Serviceable Cities
-  const [businessProfileId, setBusinessProfileId] = useState(null); // Required for Orders
+  // const [businessProfileId, setBusinessProfileId] = useState(null); // Required for Orders
   const [loading, setLoading] = useState(true);
   
   const [cart, setCart] = useState([]);
@@ -92,56 +92,43 @@ export default function App() {
   useEffect(() => {
     let isMounted = true;
 
-    const loadHhcData = async () => {
-      try {
-        const baseUrl = 'https://api.hhcdropshipping.com/api';
-        const hhcApiKey = import.meta.env.VITE_HHC_API_KEY;
+    
+const loadHhcData = async () => {
+  try {
+    // FastAPI backend URL
+    const baseUrl = import.meta.env.VITE_API_URL;
 
-        const headers = {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'User-Agent': 'BazaarRetail-Integration/1.0' // Required by HHC Firewall
-        };
+    // A. Business Profile is now managed by FastAPI.
+    // No HHC API key or business profile request in React.
 
-        if (hhcApiKey) {
-          headers['app-key'] = hhcApiKey;
-        }
+    // B. FETCH CITIES FROM FASTAPI
+    try {
+      const citiesRes = await fetch(`${baseUrl}/api/cities`);
 
-        // A. FETCH BUSINESS PROFILE (Needed for placing orders)
-        try {
-          const bpRes = await fetch(`${baseUrl}/dropshipper/open/businessProfiles`, { headers });
-          if (bpRes.ok) {
-            const bpData = await bpRes.json();
-            if (bpData?.data?.length > 0) {
-              const activeBp = bpData.data.find(bp => bp.isVerified) || bpData.data[0];
-              if (isMounted) setBusinessProfileId(activeBp.id);
-            }
-          }
-        } catch (e) { console.error('Failed to fetch BP:', e); }
+      if (!citiesRes.ok) {
+        throw new Error(`Cities API Error: ${citiesRes.status}`);
+      }
 
-        // B. FETCH SERVICABLE CITIES FOR CHECKOUT DROPDOWN
-        try {
-          const citiesRes = await fetch(`${baseUrl}/dropshipper/open/courier_cities`, { headers });
-          if (citiesRes.ok) {
-            const citiesData = await citiesRes.json();
-            if (Array.isArray(citiesData) && isMounted) {
-              setCities(citiesData);
-            }
-          }
-        } catch (e) { console.error('Failed to fetch cities:', e); }
+      const citiesData = await citiesRes.json();
+
+      if (Array.isArray(citiesData) && isMounted) {
+        setCities(citiesData);
+      }
+
+    } catch (e) {
+      console.error("Failed to fetch cities:", e);
+    }
 
         // C. FETCH PRODUCTS
         
 // FETCH ALL PRODUCTS USING PAGINATION
 
 // FETCH PRODUCTS
-const productsRes = await fetch(
-  `${baseUrl}/dropshipper/open/products?paginate=100`,
-  { headers }
-);
+
+const productsRes = await fetch(`${baseUrl}/api/products`);
 
 if (!productsRes.ok) {
-  throw new Error(`HHC Products API Error: ${productsRes.status}`);
+  throw new Error(`Products API Error: ${productsRes.status}`);
 }
 
 const productsData = await productsRes.json();
@@ -150,19 +137,11 @@ const allProducts = productsData.data || [];
 console.log("Total fetched:", allProducts.length);
 
 // ONLY AVAILABLE PRODUCTS
-const productsList = allProducts.filter(item =>
+const productsList = allProducts.filter((item) =>
   Number(item.quantity) > 0 &&
   Number(item.stockStatus) === 1 &&
   String(item.product_status).toLowerCase() === "publish"
 );
-
-console.log("Available Products:", productsList.length);
-
-
-console.log("Total fetched:", allProducts.length);
-
-// ONLY AVAILABLE PRODUCTS
-
 
 console.log("Available Products:", productsList.length);
 
@@ -341,80 +320,90 @@ console.log("Website Products:", finalProducts.length);
   const shippingFee = subtotal === 0 ? 0 : 250;
   const grandTotal = subtotal + shippingFee;
 
-  // HHC AUTO-ORDER PLACEMENT LOGIC
-  const handlePlaceOrder = async (e) => {
-    e.preventDefault();
-    if (!formData.name || !formData.phone || !formData.city || !formData.address) {
-      return alert('Please complete all delivery fields.');
+  // HHC AUTO-ORDER PLACEMENT LOGIC (via secure FastAPI backend)
+  const orderRequestIdRef = useRef(null);
+  
+const handlePlaceOrder = async (e) => {
+  e.preventDefault();
+
+  if (isSubmitting) return;
+
+  if (!formData.name || !formData.phone || !formData.city || !formData.address) {
+    return alert('Please complete all delivery fields.');
+  }
+
+  setIsSubmitting(true);
+
+  try {
+    const baseUrl = import.meta.env.VITE_API_URL;
+
+    if (!baseUrl) {
+      throw new Error('Backend API URL is not configured.');
     }
 
-    setIsSubmitting(true);
-    let orderSuccess = false;
-    let hhcOrderId = null;
+    // Generate one unique ID per checkout attempt.
+    // Reuse the same ID if the request is retried.
+    if (!orderRequestIdRef.current) {
+      orderRequestIdRef.current = crypto.randomUUID();
+    }
 
-    // 1. Attempt HHC Auto-Placement
-    try {
-      const baseUrl = 'https://api.hhcdropshipping.com/api';
-      const hhcApiKey = import.meta.env.VITE_HHC_API_KEY;
-      
-      if (hhcApiKey && businessProfileId) {
-        const orderPayload = {
-          products: cart.map(item => ({ product_id: item.id, quantity: item.quantity })),
-          full_name: formData.name,
-          address: formData.address,
-          destination_city: formData.city, // Composite ID (e.g. "2-105") from dropdown
-          phone: formData.phone,
-          bp_id: businessProfileId,
-          shp_type: 1, // Regular Shipment
-          payment_method: "cod",
-          sell_price: grandTotal
-        };
+    const orderPayload = {
+      request_id: orderRequestIdRef.current,
+      products: cart.map(item => ({
+        product_id: item.id,
+        quantity: item.quantity
+      })),
+      full_name: formData.name,
+      address: formData.address,
+      destination_city: formData.city,
+      phone: formData.phone,
+      shp_type: 1,
+      payment_method: 'cod'
+    };
 
-        const response = await fetch(`${baseUrl}/dropshipper/open/orders`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'app-key': hhcApiKey,
-            'User-Agent': 'BazaarRetail-Integration/1.0'
-          },
-          body: JSON.stringify(orderPayload)
-        });
-
-        if (response.ok) {
-            const responseData = await response.json();
-            orderSuccess = true;
-            hhcOrderId = responseData.id || null;
-        }
+    const response = await fetch(
+      `${baseUrl.replace(/\/$/, '')}/api/orders`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(orderPayload)
       }
-    } catch (err) {
-      console.error('HHC Auto-Placement failed:', err);
+    );
+
+    const result = await response.json().catch(() => ({}));
+
+    if (!response.ok || result.success !== true) {
+      const detail =
+        typeof result.detail === 'string'
+          ? result.detail
+          : typeof result.message === 'string'
+            ? result.message
+            : 'Failed to place order.';
+
+      throw new Error(detail);
     }
 
-    // 2. Fallback / Backup to Supabase
-    if (supabase) {
-      try {
-        const { error } = await supabase.from('orders').insert([{
-          customer_name: formData.name,
-          customer_phone: formData.phone,
-          customer_city: formData.city, 
-          customer_address: formData.address,
-          items: cart,
-          total_amount: grandTotal,
-          status: orderSuccess ? `Auto-Placed on HHC (ID: ${hhcOrderId})` : 'Pending COD (Manual Required)'
-        }]);
-        if (!error && !orderSuccess) orderSuccess = true; // Supabase saved it as backup
-      } catch (err) { console.error('Supabase backup failed', err); }
-    }
+    setOrderSubmitted(true);
+    setCart([]);
 
-    if (orderSuccess) {
-      setOrderSubmitted(true);
-      setCart([]);
-    } else {
-      alert('Failed to place order. Please try again or check your internet connection.');
-    }
+    // Clear ID only after confirmed successful order
+    orderRequestIdRef.current = null;
+
+  } catch (err) {
+    console.error('Order placement failed:', err);
+
+    alert(
+      err.message ||
+      'Failed to place order. Please try again.'
+    );
+
+  } finally {
     setIsSubmitting(false);
-  };
+  }
+};
+
 
   const categories = ['All', ...new Set(products.map((p) => p.category).filter(Boolean))];
   const filteredProducts = products.filter((p) => {
