@@ -7,6 +7,7 @@ import json
 import sqlite3
 from decimal import Decimal
 from supabase import create_client
+from datetime import datetime, timezone
 
 app = FastAPI(title="Bazaar Retail Backend")
 app.add_middleware(
@@ -219,6 +220,7 @@ def upgrade_orders_db():
 upgrade_orders_db()
 
 
+
 def register_order_attempt(order: OrderRequest):
     # Same order details produce the same fingerprint
     payload = order.model_dump(exclude={"request_id"})
@@ -250,6 +252,7 @@ def register_order_attempt(order: OrderRequest):
                     payload_hash
                 )
             )
+
             conn.commit()
             return "new"
 
@@ -275,8 +278,7 @@ def register_order_attempt(order: OrderRequest):
                     detail="Request ID already used for a different order"
                 )
 
-            
-            # Allow a retry only when product verification
+            # Allow retry only if product verification
             # failed before any HHC order submission.
             status_row = conn.execute(
                 """
@@ -303,6 +305,7 @@ def register_order_attempt(order: OrderRequest):
                     """,
                     (order.request_id,)
                 )
+
                 conn.commit()
 
                 if cursor.rowcount == 1:
@@ -310,51 +313,6 @@ def register_order_attempt(order: OrderRequest):
 
             return "duplicate"
 
-
-def register_supabase_order(order: OrderRequest):
-    payload = order.model_dump(exclude={"request_id"})
-
-    payload_json = json.dumps(
-        payload,
-        sort_keys=True,
-        separators=(",", ":")
-    )
-
-    payload_hash = hashlib.sha256(
-        payload_json.encode("utf-8")
-    ).hexdigest()
-
-    order_data = {
-        "request_id": order.request_id,
-        "payload_hash": payload_hash,
-        "status": "pending",
-        "customer_name": order.full_name,
-        "customer_phone": order.phone,
-        "customer_address": order.address,
-        "customer_city": order.destination_city,
-        "address": order.address,
-        "city": order.destination_city,
-        "country": "Pakistan",
-        "payment_method": "cod",
-        "items": [
-            {
-                "product_id": item.product_id,
-                "quantity": item.quantity
-            }
-            for item in order.products
-        ]
-    }
-
-    result = (
-        supabase.table("orders")
-        .insert(order_data)
-        .execute()
-    )
-
-    if not result.data:
-        raise RuntimeError("Supabase order registration failed")
-
-    return result.data[0]
 
 
 def register_supabase_order(order: OrderRequest):
@@ -432,6 +390,26 @@ def register_supabase_order(order: OrderRequest):
                 status_code=409,
                 detail="Request ID already used for different order details"
             )
+
+        
+        if (
+            saved_order.get("status") == "verification_failed"
+            and saved_order.get("hhc_order_id") is None
+        ):
+            retry_success = retry_supabase_order_verification(
+                order.request_id,
+                payload_hash
+            )
+
+            if retry_success:
+                return {
+                    "status": "new",
+                    "order": {
+                        **saved_order,
+                        "status": "pending"
+                    }
+                }
+
 
         return {
             "status": "duplicate",
@@ -846,3 +824,117 @@ async def find_hhc_product(product_id: int, max_pages: int = 5):
             break
 
     return None
+
+
+def claim_supabase_order(request_id: str, payload_hash: str) -> bool:
+    """
+    Atomically claim a pending Supabase order.
+
+    Returns True only when the order successfully
+    changes from pending to submitting.
+    """
+
+    response = supabase.rpc(
+        "claim_order_for_submission",
+        {
+            "p_request_id": request_id,
+            "p_payload_hash": payload_hash
+        }
+    ).execute()
+
+    if not isinstance(response.data, bool):
+        raise RuntimeError(
+            "Unexpected Supabase order claim response"
+        )
+
+    return response.data
+
+
+def save_supabase_order_total(
+    request_id: str,
+    grand_total: int
+) -> bool:
+    """
+    Save the backend-validated order total in Supabase.
+    Only updates a pending order with no HHC order ID.
+    """
+
+    if grand_total < 0:
+        raise ValueError("Order total cannot be negative")
+
+    response = (
+        supabase.table("orders")
+        .update({
+            "total_amount": grand_total,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        })
+        .eq("request_id", request_id)
+        .eq("status", "pending")
+        .is_("hhc_order_id", "null")
+        .execute()
+    )
+
+    return len(response.data or []) == 1
+
+
+def retry_supabase_order_verification(
+    request_id: str,
+    payload_hash: str
+) -> bool:
+    """
+    Retry only an order whose product verification failed
+    before any HHC submission attempt.
+
+    Returns True if the order was reset to pending.
+    """
+
+    response = supabase.rpc(
+        "retry_order_verification",
+        {
+            "p_request_id": request_id,
+            "p_payload_hash": payload_hash
+        }
+    ).execute()
+
+    if not isinstance(response.data, bool):
+        raise RuntimeError(
+            "Unexpected Supabase retry response"
+        )
+
+    return response.data
+
+
+def update_supabase_order_status(
+    request_id: str,
+    new_status: str,
+    expected_status: str = "pending"
+) -> bool:
+    """
+    Update an order status only when its current
+    status matches the expected status.
+    """
+
+    allowed_statuses = {
+        "validated_test",
+        "validation_failed",
+        "verification_failed"
+    }
+
+    if new_status not in allowed_statuses:
+        raise ValueError("Invalid order status")
+
+    response = (
+        supabase.table("orders")
+        .update({
+            "status": new_status
+        })
+        .eq("request_id", request_id)
+        .eq("status", expected_status)
+        .is_("hhc_order_id", "null")
+        .execute()
+    )
+
+    return len(response.data or []) == 1
+
+
+
