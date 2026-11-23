@@ -31,3 +31,30 @@ backend/venv/
 backend/__pycache__/
 
 backend/orders.db
+
+
+# Secrets
+.env
+.env.*
+!.env.example
+backend/.env
+
+# Python
+backend/venv/
+backend/__pycache__/
+__pycache__/
+*.pyc
+
+# Local databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Local backups
+*.bak
+*.before-*
+
+# Frontend
+node_modules/
+dist/
+.vercel/

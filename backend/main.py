@@ -5,10 +5,9 @@ from pydantic import BaseModel, Field
 import hashlib
 import json
 import sqlite3
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from supabase import create_client
 from datetime import datetime, timezone
-
 app = FastAPI(title="Bazaar Retail Backend")
 app.add_middleware(
     CORSMiddleware,
@@ -53,6 +52,41 @@ supabase = create_client(
 
 HHC_API_KEY = os.getenv("HHC_API_KEY")
 
+
+async def get_hhc_checkout_preview(products, destination_city):
+    url = "https://api.hhcdropshipping.com/api/dropshipper/open/checkout"
+
+    headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "app-key": HHC_API_KEY,
+        "User-Agent": "BazaarRetail-Backend/1.0"
+    }
+
+    payload = {
+        "products": [
+            {
+                "product_id": item.product_id,
+                "quantity": item.quantity
+            }
+            for item in products
+        ],
+        "payment_method": "cod",
+        "shp_type": 1,
+        "destination_city": destination_city
+    }
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        response = await client.post(
+            url,
+            headers=headers,
+            json=payload
+        )
+        response.raise_for_status()
+        return response.json()
+
+
+
 @app.get("/api/test-hhc")
 async def test_hhc():
     if not HHC_API_KEY:
@@ -91,9 +125,17 @@ async def test_hhc():
         }
 
 
+
+
 @app.get("/api/products")
-async def get_products():
-    url = "https://api.hhcdropshipping.com/api/dropshipper/open/products?paginate=100"
+async def get_products(page: int = 1):
+    if page < 1:
+        raise HTTPException(
+            status_code=400,
+            detail="Page must be greater than zero"
+        )
+
+    url = "https://api.hhcdropshipping.com/api/dropshipper/open/products"
 
     headers = {
         "Accept": "application/json",
@@ -103,20 +145,29 @@ async def get_products():
 
     try:
         async with httpx.AsyncClient(timeout=30) as client:
-            response = await client.get(url, headers=headers)
-            response.raise_for_status()
-            return response.json()
+            response = await client.get(
+                url,
+                headers=headers,
+                params={
+                    "paginate": 100,
+                    "page": page
+                }
+            )
 
-    except httpx.HTTPStatusError:
+            response.raise_for_status()
+            data = response.json()
+
+            return {
+                "data": data.get("data", []),
+                "current_page": data.get("current_page", page),
+                "total": data.get("total"),
+                "per_page": data.get("per_page", 100)
+            }
+
+    except (httpx.HTTPStatusError, httpx.RequestError):
         raise HTTPException(
             status_code=502,
             detail="Unable to fetch HHC products"
-        )
-
-    except httpx.RequestError:
-        raise HTTPException(
-            status_code=502,
-            detail="HHC connection failed"
         )
 
 
@@ -494,6 +545,67 @@ def calculate_product_price(product):
     )
 
 
+def validate_hhc_checkout_preview(preview, customer_total):
+    if not isinstance(preview, dict):
+        raise ValueError("Invalid HHC checkout preview")
+
+    totals = preview.get("total")
+
+    if not isinstance(totals, dict):
+        raise ValueError("HHC checkout total is missing")
+
+    top_level_total = totals.get("total")
+
+    if top_level_total is None:
+        raise ValueError("HHC checkout amount is missing")
+
+    store_totals = []
+
+    for store in preview.get("items", []):
+        store_total = store.get("total", {})
+
+        if not isinstance(store_total, dict):
+            raise ValueError("Invalid HHC store total")
+
+        amount = store_total.get("total")
+
+        if amount is None:
+            raise ValueError("HHC store amount is missing")
+
+        store_totals.append(Decimal(str(amount)))
+
+    if not store_totals:
+        raise ValueError("HHC checkout contains no store totals")
+
+    hhc_top_total = Decimal(str(top_level_total))
+    hhc_store_total = sum(store_totals)
+    selling_total = Decimal(str(customer_total))
+
+    if any(
+        not amount.is_finite() or amount < 0
+        for amount in [
+            hhc_top_total,
+            hhc_store_total,
+            selling_total
+        ]
+    ):
+        raise ValueError("Invalid HHC checkout amount")
+
+    required_amount = max(hhc_top_total, hhc_store_total)
+
+    if selling_total < required_amount:
+        raise ValueError(
+            "Customer selling price does not cover HHC checkout charges"
+        )
+
+    return {
+        "hhc_top_total": float(hhc_top_total),
+        "hhc_store_total": float(hhc_store_total),
+        "required_amount": float(required_amount),
+        "customer_total": float(selling_total)
+    }
+
+
 def build_hhc_order_payload(order: OrderRequest, grand_total):
     return {
         "products": [
@@ -516,40 +628,426 @@ def build_hhc_order_payload(order: OrderRequest, grand_total):
     }
 
 
+
 def parse_hhc_order_response(response_data: dict):
     if not isinstance(response_data, dict):
         raise ValueError("Invalid HHC response format")
 
-    # Do not assume HTTP 200 means the order was accepted.
-    success = (
-        response_data.get("success") is True
-        or response_data.get("status") is True
-    )
+    if response_data.get("success") is False:
+        raise ValueError("HHC explicitly rejected the order")
 
-    if not success:
+    if response_data.get("status") is False:
+        raise ValueError("HHC explicitly rejected the order")
+
+    # HHC OpenAPI: successful order details are returned
+    # directly, with the order ID in the top-level "id".
+    order_id = response_data.get("id")
+
+    if (
+        isinstance(order_id, bool)
+        or not isinstance(order_id, int)
+        or order_id <= 0
+    ):
         raise ValueError(
-            "HHC did not explicitly confirm order success"
-        )
-
-    data = response_data.get("data")
-
-    if not isinstance(data, dict):
-        raise ValueError(
-            "HHC response does not contain order details"
-        )
-
-    order_id = (
-        data.get("order_id")
-        or data.get("id")
-    )
-
-    if not order_id:
-        raise ValueError(
-            "HHC response does not contain an order ID"
+            "HHC response does not contain a valid order ID"
         )
 
     return str(order_id)
 
+
+def is_hhc_live_submission_enabled() -> bool:
+    """
+    Real HHC order placement is disabled by default.
+    Requires explicit activation after all safety tests.
+    """
+    return os.getenv(
+        "HHC_LIVE_ORDERS_ENABLED",
+        "false"
+    ).strip().lower() == "true"
+
+
+async def submit_hhc_order(order_payload: dict):
+    """
+    Submit an order to HHC.
+
+    IMPORTANT:
+    This function performs REAL order placement when called.
+    Do not call it during local testing.
+    """
+
+    if not is_hhc_live_submission_enabled():
+        raise RuntimeError(
+            "Real HHC order submission is disabled"
+        )
+
+    if not HHC_API_KEY:
+        raise RuntimeError("HHC API key is missing")
+
+    url = "https://api.hhcdropshipping.com/api/dropshipper/open/orders"
+
+    headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "app-key": HHC_API_KEY,
+        "User-Agent": "BazaarRetail-Backend/1.0"
+    }
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        response = await client.post(
+            url,
+            headers=headers,
+            json=order_payload
+        )
+
+        response.raise_for_status()
+        return response.json()
+
+
+
+async def submit_hhc_order_safely(order_payload: dict):
+    """
+    Submit to HHC only when live orders are explicitly enabled.
+
+    IMPORTANT:
+    Calling this function with live mode enabled
+    can create a REAL HHC order.
+    """
+
+    if not is_hhc_live_submission_enabled():
+        raise RuntimeError(
+            "HHC live orders are disabled"
+        )
+
+    return await submit_hhc_order(order_payload)
+
+
+async def execute_hhc_submission(order_payload: dict):
+    """
+    Execute one HHC submission attempt.
+
+    IMPORTANT:
+    This function can create a REAL HHC order when
+    live submission is enabled.
+
+    It does not retry failed or timed-out requests.
+    """
+
+    if not is_hhc_live_submission_enabled():
+        raise RuntimeError("HHC live orders are disabled")
+
+    return await submit_hhc_order_safely(order_payload)
+
+
+async def execute_hhc_submission_with_tracking(
+    order_payload: dict,
+    request_id: str,
+    payload_hash: str
+):
+    """
+    Submit once and track the outcome in Supabase.
+
+    PRECONDITION:
+    The order must already be atomically claimed
+    and have status 'submitting'.
+
+    This function can place a REAL HHC order
+    when live submission is enabled.
+    """
+
+    if not is_hhc_live_submission_enabled():
+        raise RuntimeError("HHC live orders are disabled")
+
+    try:
+        response_data = await execute_hhc_submission(order_payload)
+    except (httpx.RequestError, httpx.HTTPStatusError):
+        marked = mark_supabase_submission_unknown(
+            request_id,
+            payload_hash
+        )
+        if not marked:
+            raise RuntimeError(
+                "HHC outcome uncertain and Supabase status update failed"
+            )
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "HHC submission outcome is uncertain. "
+                "Order will not be automatically retried."
+            )
+        )
+
+    try:
+        hhc_order_id = parse_hhc_order_response(response_data)
+    except (ValueError, TypeError):
+        marked = mark_supabase_submission_unknown(
+            request_id,
+            payload_hash
+        )
+        if not marked:
+            raise RuntimeError(
+                "HHC response unclear and Supabase status update failed"
+            )
+        raise HTTPException(
+            status_code=503,
+            detail="HHC response unclear. Order requires manual verification."
+        )
+
+    saved = save_supabase_hhc_order_id(
+        request_id,
+        payload_hash,
+        hhc_order_id
+    )
+
+    if not saved:
+        raise RuntimeError(
+            "HHC order may have been created but confirmation could not be saved"
+        )
+
+    return {
+        "success": True,
+        "hhc_order_id": hhc_order_id
+    }
+
+
+async def process_live_hhc_order(
+    order_payload: dict,
+    request_id: str,
+    payload_hash: str
+):
+    """
+    Claim the Supabase order atomically before
+    making exactly one HHC submission attempt.
+
+    WARNING:
+    This function can place a REAL HHC order
+    when live submission is enabled.
+    """
+
+    if not is_hhc_live_submission_enabled():
+        raise RuntimeError("HHC live orders are disabled")
+
+    claimed = prepare_hhc_order_submission(
+        request_id,
+        payload_hash
+    )
+
+    if not claimed:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Order cannot be claimed for submission. "
+                "It may already be processing or submitted."
+            )
+        )
+
+    return await execute_hhc_submission_with_tracking(
+        order_payload,
+        request_id,
+        payload_hash
+    )
+
+
+async def simulate_live_hhc_order(
+    order_payload: dict,
+    request_id: str,
+    payload_hash: str
+):
+    """
+    Simulate live order processing without
+    submitting anything to HHC or Supabase.
+    """
+
+    return {
+        "success": True,
+        "simulation": True,
+        "request_id": request_id,
+        "message": "Live order simulation completed. No supplier order placed."
+    }
+
+
+
+
+async def get_hhc_existing_orders():
+    """
+    Read existing HHC orders for reconciliation.
+
+    This function does NOT create or submit orders.
+    """
+
+    if not HHC_API_KEY:
+        raise RuntimeError("HHC API key is missing")
+
+    url = (
+        "https://api.hhcdropshipping.com"
+        "/api/dropshipper/open/orders"
+    )
+
+    headers = {
+        "Accept": "application/json",
+        "app-key": HHC_API_KEY,
+        "User-Agent": "BazaarRetail-Backend/1.0"
+    }
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        response = await client.get(
+            url,
+            headers=headers
+        )
+        response.raise_for_status()
+        return response.json()
+
+
+async def get_all_hhc_existing_orders():
+    """
+    Fetch all pages of existing HHC orders.
+
+    READ ONLY:
+    Never creates or submits an HHC order.
+    """
+
+    if not HHC_API_KEY:
+        raise RuntimeError("HHC API key is missing")
+
+    url = (
+        "https://api.hhcdropshipping.com"
+        "/api/dropshipper/open/orders"
+    )
+
+    headers = {
+        "Accept": "application/json",
+        "app-key": HHC_API_KEY,
+        "User-Agent": "BazaarRetail-Backend/1.0"
+    }
+
+    all_orders = []
+    page = 1
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        while True:
+            response = await client.get(
+                url,
+                headers=headers,
+                params={"page": page}
+            )
+            response.raise_for_status()
+
+            result = response.json()
+
+            if not isinstance(result, dict):
+                raise ValueError("Invalid HHC orders response")
+
+            orders = result.get("data")
+
+            if not isinstance(orders, list):
+                raise ValueError("Invalid HHC orders list")
+
+            returned_page = int(result.get("current_page", 0))
+            per_page = int(result.get("per_page", 0))
+            total = int(result.get("total", -1))
+
+            if returned_page != page or per_page <= 0 or total < 0:
+                raise ValueError("Invalid HHC pagination metadata")
+
+            all_orders.extend(orders)
+
+            if len(all_orders) >= total:
+                break
+
+            if not orders:
+                raise ValueError(
+                    "HHC pagination ended before all orders were fetched"
+                )
+
+            page += 1
+
+            if page > 100:
+                raise ValueError(
+                    "HHC order pagination exceeded safety limit"
+                )
+
+    return all_orders
+
+
+def find_hhc_reconciliation_candidates(
+    hhc_orders: list,
+    customer_phone: str,
+    customer_total: float
+):
+    """
+    Find possible HHC orders for manual reconciliation.
+
+    Matches are NOT proof that an HHC order belongs
+    to a particular Bazaar Retail request.
+
+    This function does not modify Supabase
+    or submit HHC orders.
+    """
+
+    candidates = []
+
+    for hhc_order in hhc_orders:
+        if not isinstance(hhc_order, dict):
+            continue
+
+        phone_matches = (
+            str(hhc_order.get("consignee_phone", "")).strip()
+            == str(customer_phone).strip()
+        )
+
+        try:
+            hhc_sell_price = Decimal(
+                str(hhc_order.get("sellPrice"))
+            )
+            expected_total = Decimal(
+                str(customer_total)
+            )
+
+            price_matches = (
+                hhc_sell_price == expected_total
+            )
+        except (InvalidOperation, TypeError, ValueError):
+            continue
+
+        if phone_matches and price_matches:
+            candidates.append({
+                "hhc_order_id": hhc_order.get("id"),
+                "invoice_id": hhc_order.get("invID"),
+                "order_status": hhc_order.get(
+                    "order_status_name"
+                )
+            })
+
+    return candidates
+
+
+def assess_hhc_reconciliation_candidates(candidates: list):
+    """
+    Assess possible HHC order matches.
+
+    IMPORTANT:
+    Even a single candidate is NOT sufficient
+    evidence for automatic confirmation.
+    """
+
+    if not candidates:
+        return {
+            "status": "no_match",
+            "requires_manual_review": True,
+            "candidate_count": 0
+        }
+
+    if len(candidates) == 1:
+        return {
+            "status": "possible_match",
+            "requires_manual_review": True,
+            "candidate_count": 1
+        }
+
+    return {
+        "status": "multiple_matches",
+        "requires_manual_review": True,
+        "candidate_count": len(candidates)
+    }
 
 
 
@@ -614,14 +1112,30 @@ async def create_order(order: OrderRequest):
         )
 
     
-    # Register this checkout attempt atomically
-    attempt_status = register_order_attempt(order)
+    # Register checkout in Supabase before local validation.
+    # Real HHC submission remains disabled.
+    supabase_registration = register_supabase_order(order)
 
-    if attempt_status == "duplicate":
+    if supabase_registration["status"] == "duplicate":
         raise HTTPException(
             status_code=409,
-            detail="This order request has already been received. No new order was created."
+            detail="This order request already exists in Supabase. No new order was created."
         )
+
+    
+    # Retrieve the hash stored with this order in Supabase.
+    # It is required for the atomic submission claim.
+    registered_order = supabase_registration.get("order") or {}
+
+    payload_hash = registered_order.get("payload_hash")
+
+    if not isinstance(payload_hash, str) or not payload_hash:
+        raise HTTPException(
+            status_code=500,
+            detail="Supabase order payload hash is missing"
+        )
+
+    # Register this checkout attempt atomically
 
 
     # Fetch products directly from HHC
@@ -639,11 +1153,21 @@ async def create_order(order: OrderRequest):
             response.raise_for_status()
             data = response.json()
     
+   
     except (httpx.HTTPStatusError, httpx.RequestError):
-        update_order_status(
+        # HHC product verification failed before order submission.
+        supabase_updated = update_supabase_order_status(
             order.request_id,
             "verification_failed"
         )
+
+        if not supabase_updated:
+            raise HTTPException(
+                status_code=500,
+                detail="Unable to record product verification failure"
+            )
+
+
 
         raise HTTPException(
             status_code=502,
@@ -670,7 +1194,21 @@ async def create_order(order: OrderRequest):
 
         
         if not product:
-            mark_order_validation_failed(order.request_id)
+            
+            # Record validation failure in Supabase first.
+            supabase_updated = update_supabase_order_status(
+                order.request_id,
+                "validation_failed"
+            )
+
+            if not supabase_updated:
+                raise HTTPException(
+                    status_code=500,
+                    detail="Unable to record order validation failure"
+                )
+
+            
+
 
             raise HTTPException(
                 status_code=400,
@@ -683,7 +1221,21 @@ async def create_order(order: OrderRequest):
             or int(product.get("stockStatus") or 0) != 1
             or str(product.get("product_status", "")).lower() != "publish"
         ):
-            mark_order_validation_failed(order.request_id)
+            
+            # Record validation failure in Supabase first.
+            supabase_updated = update_supabase_order_status(
+                order.request_id,
+                "validation_failed"
+            )
+
+            if not supabase_updated:
+                raise HTTPException(
+                    status_code=500,
+                    detail="Unable to record order validation failure"
+                )
+
+            
+
             raise HTTPException(
                 status_code=400,
                 detail=f"Product {item.product_id} is unavailable"
@@ -692,13 +1244,120 @@ async def create_order(order: OrderRequest):
         price = calculate_product_price(product)
         subtotal += price * item.quantity
 
+   
     grand_total = subtotal + SHIPPING_FEE
-    update_order_status(order.request_id, "validated_test")
+
+    # Verify HHC checkout charges before accepting the order.
+    # This endpoint only previews charges; it does not place an order.
+    try:
+        hhc_preview = await get_hhc_checkout_preview(
+            products=order.products,
+            destination_city=order.destination_city
+        )
+
+        hhc_cost_check = validate_hhc_checkout_preview(
+            hhc_preview,
+            grand_total
+        )
+
+    except (httpx.HTTPStatusError, httpx.RequestError, ValueError) as error:
+        # Keep the order in verification_failed status so that
+        # the same request can be retried safely.
+        supabase_updated = update_supabase_order_status(
+            order.request_id,
+            "verification_failed"
+        )
+
+        if not supabase_updated:
+            raise HTTPException(
+                status_code=500,
+                detail="Unable to record HHC checkout verification failure"
+            )
+
+        raise HTTPException(
+            status_code=502,
+            detail="Unable to verify HHC checkout charges"
+        )
+
+    # Save the backend-calculated total in Supabase.
+    total_saved = save_supabase_order_total(
+        order.request_id,
+        grand_total
+    )
+
+    if not total_saved:
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to save validated order total"
+        )
+
+ 
+    # Live submission branch.
+    # SAFETY LOCK: Real HHC orders remain blocked.
+    if is_hhc_live_submission_enabled():
+
+        hhc_order_payload = build_hhc_order_payload(
+            order,
+            grand_total
+        )
+
+        # Do not remove this lock until reconciliation,
+        # production checks, and controlled activation
+        # are complete.
+       
+        # PRODUCTION SAFETY LOCK
+        # Keep this enabled until final reconciliation
+        # and end-to-end testing are complete.
+        if os.getenv("HHC_PRODUCTION_APPROVED", "false").lower() != "true":
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "Live HHC submission is awaiting production approval. "
+                    "No supplier order was placed."
+                )
+            )
+
+        return await process_live_hhc_order(
+            hhc_order_payload,
+            order.request_id,
+            payload_hash
+        )
+ 
+
+        # Future live execution (NOT ACTIVE):
+        # return await process_live_hhc_order(
+        #     hhc_order_payload,
+        #     order.request_id,
+        #     payload_hash
+        # )
+
+
+    # Atomic claim will be used only after the
+    # complete live submission flow is connected.
+    # Do not claim an order during test mode.
+
+
+    # Mark Supabase order as validated in test mode.
+    status_saved = update_supabase_order_status(
+        order.request_id,
+        "validated_test"
+    )
+
+    if not status_saved:
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to update Supabase order status"
+        )
+
+    
+    
+
 
     # TEST MODE: no real HHC order submission
     return {
         "success": False,
         "test_mode": True,
+        "status": "validated_test",
         "message": "Order validated. No real order placed.",
         "subtotal": subtotal,
         "shipping_fee": SHIPPING_FEE,
@@ -806,24 +1465,56 @@ async def get_products_by_page(page_number: int):
         )
 
 
-async def find_hhc_product(product_id: int, max_pages: int = 5):
+async def find_hhc_product(product_id: int, max_pages: int = 30):
     """
-    Find a product across HHC catalog pages.
+    Search HHC catalog pages for a specific product.
     Read-only: does not create any order.
     """
     for page in range(1, max_pages + 1):
         data = await get_products_by_page(page)
-
         products = data.get("data", [])
 
         for product in products:
             if int(product.get("id", 0)) == product_id:
                 return product
 
-        if not products or len(products) < 100:
+        if not products:
             break
 
+        current_page = int(data.get("current_page") or page)
+        total = data.get("total")
+        per_page = data.get("per_page")
+
+        if total is not None and per_page:
+            if current_page * int(per_page) >= int(total):
+                break
+
     return None
+
+
+def prepare_hhc_order_submission(
+    request_id: str,
+    payload_hash: str
+) -> bool:
+    """
+    Atomically reserve an order for HHC submission.
+
+    Does NOT call HHC or place an order.
+    """
+
+    if not request_id or not payload_hash:
+        raise ValueError("Missing order submission identifiers")
+
+    claimed = claim_supabase_order(
+        request_id,
+        payload_hash
+    )
+
+    if not claimed:
+        return False
+
+    return True
+
 
 
 def claim_supabase_order(request_id: str, payload_hash: str) -> bool:
@@ -848,6 +1539,91 @@ def claim_supabase_order(request_id: str, payload_hash: str) -> bool:
         )
 
     return response.data
+
+
+def save_supabase_hhc_order_id(
+    request_id: str,
+    payload_hash: str,
+    hhc_order_id: str
+) -> bool:
+    """
+    Atomically save a confirmed HHC Order ID in Supabase.
+    Only a submitting order without an HHC ID can be updated.
+    """
+
+    if not str(hhc_order_id).strip():
+        raise ValueError("HHC Order ID cannot be empty")
+
+    response = supabase.rpc(
+        "save_hhc_order_confirmation",
+        {
+            "p_request_id": request_id,
+            "p_payload_hash": payload_hash,
+            "p_hhc_order_id": str(hhc_order_id)
+        }
+    ).execute()
+
+    if not isinstance(response.data, bool):
+        raise RuntimeError(
+            "Unexpected Supabase HHC confirmation response"
+        )
+
+    return response.data
+
+
+def mark_supabase_submission_unknown(
+    request_id: str,
+    payload_hash: str
+) -> bool:
+    """
+    Mark an uncertain HHC submission in Supabase.
+
+    Used when an HHC submission times out or its
+    outcome cannot be safely determined.
+
+    Does not retry or submit any HHC order.
+    """
+
+    response = supabase.rpc(
+        "mark_hhc_submission_unknown",
+        {
+            "p_request_id": request_id,
+            "p_payload_hash": payload_hash
+        }
+    ).execute()
+
+    if not isinstance(response.data, bool):
+        raise RuntimeError(
+            "Unexpected Supabase submission status response"
+        )
+
+    return response.data
+
+
+def get_supabase_uncertain_orders():
+    """
+    Retrieve orders requiring manual reconciliation.
+
+    READ ONLY:
+    Does not update order statuses or submit HHC orders.
+    """
+
+    response = (
+        supabase.table("orders")
+        .select(
+            "id,request_id,status,payload_hash,"
+            "hhc_order_id,total_amount,created_at,updated_at"
+        )
+        .in_("status", ["submission_unknown", "submitting"])
+        .order("created_at", desc=True)
+        .limit(100)
+        .execute()
+    )
+
+    return response.data or []
+
+
+
 
 
 def save_supabase_order_total(
